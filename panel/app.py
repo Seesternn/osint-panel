@@ -330,6 +330,35 @@ def case_file(name):
     return send_from_directory(CASE_FILES, name)
 
 
+REPORT_TEXT = {
+    "tr": {"doc": "Rapor", "print_hint": "Tarayıcının yazdırma penceresinde hedef olarak “PDF olarak kaydet”i seçin.",
+           "save_pdf": "PDF olarak kaydet", "label": "OSINT VAKA RAPORU", "created": "Oluşturma", "date": "Rapor tarihi",
+           "findings": "bulgu", "found": "doğrulanmış / bulunan", "tools": "araç", "queries": "aranan değer", "notes": "Notlar",
+           "note": "Not", "empty": "Bu vakada henüz bulgu yok.", "unified": "Akıllı arama", "made_with": "OSINT Panel ile hazırlandı · Yazan: Seesternn",
+           "foot": "Bu rapor açık kaynaklardan otomatik araçlarla toplanan bilgileri içerir. Bulgular doğrulanmadan kesin kabul edilmemelidir. "
+                   "Kişisel verilerin işlenmesinde 6698 sayılı KVKK hükümlerine uyulmalıdır."},
+    "en": {"doc": "Report", "print_hint": "In the browser's print dialog, choose “Save as PDF” as the destination.",
+           "save_pdf": "Save as PDF", "label": "OSINT CASE REPORT", "created": "Created", "date": "Report date",
+           "findings": "findings", "found": "verified / found", "tools": "tools", "queries": "queried values", "notes": "Notes",
+           "note": "Note", "empty": "No findings in this case yet.", "unified": "Smart search", "made_with": "Made with OSINT Panel · by Seesternn",
+           "foot": "This report contains information collected from open sources with automated tools. Findings should not be treated as "
+                   "conclusive until verified. Processing of personal data must comply with applicable data-protection law (e.g. GDPR / KVKK)."},
+}
+REPORT_META_EN = {"Bulan araçlar": "Found by", "Kullanıcı adı": "Username", "Ad": "Name", "Ad Soyad": "Full name", "Konum": "Location",
+                  "Şirket": "Company", "Kurum": "Organisation", "E-posta": "E-mail", "Telefon": "Phone", "Takipçi": "Followers",
+                  "Biyografi": "Bio", "Web sitesi": "Website", "Hesap açılışı": "Account created", "Ülke": "Country", "Şehir": "City"}
+# Rapor başlıklarında araç adlarının İngilizcesi (arayüzdeki sözlükle aynı)
+REPORT_TITLES_EN = {
+    "namesearch": "Name research", "email-accounts": "E-mail account check", "email-verify": "E-mail verifier",
+    "phonenumbers": "Number parser", "phone-search": "Number-format search", "reverse-image": "Reverse image search",
+    "ipgeo": "IP lookup", "github": "GitHub profile extractor", "telegram": "Telegram check", "variants": "Username generator",
+    "hibp": "HIBP breach lookup", "email-header": "E-mail header analyzer", "geofusion": "Location finder",
+    "geolocate": "Photo geolocation (Claude)", "image-compare": "Photo matching", "ela": "Forgery analysis (ELA)",
+    "video": "Video analysis", "crtsh": "Certificate logs (crt.sh)", "dnstwist": "Lookalike domains (dnstwist)",
+    "site-intel": "Tracker analysis", "dorks": "Google dork generator", "doc-meta": "Document metadata", "websearch": "Web search",
+}
+
+
 @app.get("/case/<int:cid>/report")
 def case_report(cid):
     c = store.get_case(cid)
@@ -338,10 +367,17 @@ def case_report(cid):
     groups = {}
     for it in c["items"]:
         groups.setdefault(it["tool"], []).append(it)
+    lang = "en" if request.args.get("lang") == "en" else "tr"
+    L = REPORT_TEXT[lang]
     titles = {t["id"]: t["title"] for t in tools.public_registry()}
-    return render_template("report.html", case=c, groups=groups, titles=titles,
-                           now=time.strftime("%d.%m.%Y %H:%M"),
-                           created=time.strftime("%d.%m.%Y", time.localtime(c["created"] or 0)))
+    titles["unified"] = L["unified"]
+    if lang == "en":
+        titles.update(REPORT_TITLES_EN)
+    fmt = "%Y-%m-%d" if lang == "en" else "%d.%m.%Y"
+    return render_template("report.html", case=c, groups=groups, titles=titles, L=L, lang=lang,
+                           MK=REPORT_META_EN if lang == "en" else {},
+                           now=time.strftime(fmt + " %H:%M"),
+                           created=time.strftime(fmt, time.localtime(c["created"] or 0)))
 
 
 def run_tool_job(job, tool, inp):

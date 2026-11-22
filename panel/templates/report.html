@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="tr">
+<html lang="{{ lang }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ case.name }} · Rapor</title>
+<title>{{ case.name }} · {{ L.doc }}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -47,32 +47,33 @@
     @page { margin: 16mm 14mm; }
   }
   @media (max-width: 700px) { .page { padding: 28px 20px; margin: 12px; } .summary { grid-template-columns: repeat(2, 1fr); } }
+.foot .credit { display: inline-block; margin-top: 8px; }
 </style>
 </head>
 <body>
 <div class="toolbar">
-  <span>Tarayıcının yazdırma penceresinde hedef olarak “PDF olarak kaydet”i seçin.</span>
-  <button onclick="window.print()">PDF olarak kaydet</button>
+  <span>{{ L.print_hint }}</span>
+  <button onclick="window.print()">{{ L.save_pdf }}</button>
 </div>
 <article class="page">
-  <div class="label">OSINT VAKA RAPORU</div>
+  <div class="label">{{ L.label }}</div>
   <h1>{{ case.name }}</h1>
-  <p class="sub">Oluşturma {{ created }} · Rapor tarihi {{ now }}</p>
+  <p class="sub">{{ L.created }} {{ created }} · {{ L.date }} {{ now }}</p>
 
   <div class="summary">
-    <div><b>{{ case["items"]|length }}</b><span>bulgu</span></div>
-    <div><b>{{ case["items"]|selectattr("status", "equalto", "found")|list|length }}</b><span>doğrulanmış / bulunan</span></div>
-    <div><b>{{ groups|length }}</b><span>araç</span></div>
-    <div><b>{{ case["items"]|map(attribute="query")|unique|list|length }}</b><span>aranan değer</span></div>
+    <div><b>{{ case["items"]|length }}</b><span>{{ L.findings }}</span></div>
+    <div><b>{{ case["items"]|selectattr("status", "equalto", "found")|list|length }}</b><span>{{ L.found }}</span></div>
+    <div><b>{{ groups|length }}</b><span>{{ L.tools }}</span></div>
+    <div><b>{{ case["items"]|map(attribute="query")|unique|list|length }}</b><span>{{ L.queries }}</span></div>
   </div>
 
   {% if case.notes %}
-  <h2>Notlar</h2>
+  <h2>{{ L.notes }}</h2>
   <div class="notes">{{ case.notes }}</div>
   {% endif %}
 
   {% for tool, items in groups.items() %}
-  <h2>{{ titles.get(tool, "Sherlock" if tool == "sherlock" else tool) }} <small>{{ items|map(attribute="query")|unique|join(", ") }} · {{ items|length }} bulgu</small></h2>
+  <h2>{{ titles.get(tool, "Sherlock" if tool == "sherlock" else tool) }} <small>{{ items|map(attribute="query")|unique|join(", ") }} · {{ items|length }} {{ L.findings }}</small></h2>
   {% for it in items %}
   <div class="item {% if not it.image %}noimg{% endif %}">
     {% if it.image %}<img src="{{ it.image }}" alt="" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">{% endif %}
@@ -80,17 +81,16 @@
       <div class="t1">{{ it.title }} {% if it.tags %}<span class="tag">· {{ it.tags }}</span>{% endif %}</div>
       {% if it.url %}<div class="t2"><a href="{{ it.url }}">{{ it.url }}</a></div>{% endif %}
       {% if it.detail %}<div class="t3">{{ it.detail }}</div>{% endif %}
-      {% if it.meta %}<div class="meta">{% for k, v in it.meta.items() %}<b>{{ k }}:</b> {{ v }}{% if not loop.last %} · {% endif %}{% endfor %}</div>{% endif %}
-      {% if it.note %}<div class="note">Not: {{ it.note }}</div>{% endif %}
+      {% if it.meta %}<div class="meta">{% for k, v in it.meta.items() %}<b>{{ MK.get(k, k) }}:</b> {{ v }}{% if not loop.last %} · {% endif %}{% endfor %}</div>{% endif %}
+      {% if it.note %}<div class="note">{{ L.note }}: {{ it.note }}</div>{% endif %}
     </div>
   </div>
   {% endfor %}
   {% endfor %}
 
-  {% if not case["items"] %}<p class="sub">Bu vakada henüz bulgu yok.</p>{% endif %}
+  {% if not case["items"] %}<p class="sub">{{ L.empty }}</p>{% endif %}
 
-  <div class="foot">Bu rapor açık kaynaklardan otomatik araçlarla toplanan bilgileri içerir. Bulgular doğrulanmadan kesin kabul edilmemelidir.
-    Kişisel verilerin işlenmesinde 6698 sayılı KVKK hükümlerine uyulmalıdır.</div>
+  <div class="foot">{{ L.foot }}<br><span class="credit">{{ L.made_with }}</span></div>
 </article>
 </body>
 </html>

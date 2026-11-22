@@ -248,7 +248,7 @@ async function openCase(id) {
   $("#casesList").hidden = true; $("#caseDetail").hidden = false;
   $("#caseName").value = caseData.name;
   $("#caseNotes").value = caseData.notes || "";
-  $("#caseReport").href = `/case/${id}/report`;
+  $("#caseReport").href = `/case/${id}/report?lang=${typeof LANG === "string" ? LANG : "tr"}`;
   $("#caseActivate").textContent = C.current === id ? "Aktif vaka ✓" : "Aktif vaka yap";
   $("#caseActivate").disabled = C.current === id;
   const tools = new Set(caseData.items.map(i => i.tool));
