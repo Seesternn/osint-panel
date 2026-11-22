@@ -81,6 +81,10 @@ Requirements: `git`, `curl`, [`uv`](https://docs.astral.sh/uv/). Optional: `exif
 ./run_panel.sh          # → http://127.0.0.1:5050   (launch_panel.sh also opens the browser)
 ```
 
+On macOS, `launch_panel.sh` (handy for a Dock / desktop shortcut) runs the server as a user launchd service
+(`~/Library/LaunchAgents/com.osint-panel.server.plist`, not started at login), so it keeps running after the
+shortcut app quits. Remove it with `./launch_panel.sh --uninstall-service`.
+
 API keys are optional and added on the **Settings** page; each field has a "Get key" link.
 
 ## Command line
