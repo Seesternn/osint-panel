@@ -1,0 +1,29 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, what happened instead? Don't paste real people's personal data.
+    validations:
+      required: true
+  - type: input
+    id: tool
+    attributes:
+      label: Tool / page
+      placeholder: e.g. Smart search, Holehe, Evidence archive, CLI
+  - type: dropdown
+    id: install
+    attributes:
+      label: How do you run it?
+      options: [Docker, setup.sh (macOS), setup.sh (Linux), Other]
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log output
+      description: The tool's "Log" tab, `docker compose logs`, or the CLI output (remove API keys).
+      render: text

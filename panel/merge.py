@@ -43,6 +43,7 @@ def merge(results, value_type=None):
                 cur["detail"] = cur["detail"] or r.get("detail", "")
                 if r.get("status") == "found":
                     cur["status"] = "found"
+                cur["meta"] = {**(r.get("meta") or {}), **cur["meta"]}
             else:
                 profiles[key] = {"title": r.get("title", ""), "url": r["url"], "status": r.get("status"), "detail": r.get("detail", ""),
                                  "image": r.get("image", ""), "tools": [tool], "meta": r.get("meta") or {}}

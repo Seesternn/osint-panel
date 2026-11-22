@@ -707,3 +707,6 @@ I18N_EN.patterns.push(
   ["(\\d+) kayıtlı bulgu ve (\\d+) araç bulgusu kaydedildi", "$1 saved findings and $2 tool findings recorded"],
   ["HTTP (\\S+) — (\\d+) kontroldür açılmıyor \\(silinmiş, gizlenmiş ya da adı değişmiş olabilir\\)", "HTTP $1 — not opening for $2 checks (may be deleted, hidden or renamed)"],
 );
+
+Object.assign(I18N_EN.phrases, { "not ekle…": "add a note…", "1 araç": "1 tool", "1 bulgu": "1 finding" });
+I18N_EN.patterns.push(["oluşturma (.+)", "created $1"]);

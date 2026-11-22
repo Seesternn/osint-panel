@@ -418,3 +418,4 @@ div.vis-tooltip {
 .u-pivot-opts input { width: 56px; }
 .u-task .pv { font-style: normal; color: var(--soft); }
 #uGraph { height: 560px; }
+.u-pivot-opts { white-space: nowrap; }

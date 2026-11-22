@@ -304,6 +304,7 @@ function merged() {
         cur.refs.push({ t, r });
         if (!cur.image && r.image) cur.image = r.image;
         if (!cur.detail && r.detail) cur.detail = r.detail;
+        cur.meta = { ...(r.meta || {}), ...cur.meta };       // her aracın ek bilgileri (tarihler, ad, konum…) korunur
         if (r.status === "found") cur.status = "found";
       } else {
         map.set(k, { key: k, title: r.title, url: r.url, image: r.image || "", detail: r.detail || "", status: r.status,
@@ -337,8 +338,8 @@ function renderUnified() {
   $("#uFound").textContent = items.length;
   $("#uMulti").textContent = items.filter(x => x.tools.length > 1).length;
   $$("#uTabs .chip").forEach(c => {
-    const n = c.dataset.utab === "merged" ? items.length : info.length;
-    c.innerHTML = c.innerHTML.replace(/<span class="n">.*<\/span>/, "") + `<span class="n">${n}</span>`;
+    const n = c.dataset.utab === "merged" ? items.length : c.dataset.utab === "info" ? info.length : null;
+    c.innerHTML = c.innerHTML.replace(/<span class="n">.*<\/span>/, "") + (n === null ? "" : `<span class="n">${n}</span>`);
     c.classList.toggle("active", c.dataset.utab === U.tab);
   });
   const q = $("#uFilter").value.trim().toLowerCase();
@@ -460,6 +461,7 @@ const PIVOT_TOOLS = {
   phone: ["phonenumbers", "phone-search"],
   ip: ["ipgeo", "shodan"],
 };
+const PIVOT_GENERIC = /^(summary|profile|profiles|user|users|u|about|home|index|main|posts|overview|people|member|members|account|accounts|channel|search|login|status|me|en|tr|www)$/i;
 const PIVOT_SKIP_DOMAINS = /(^|\.)(gmail|googlemail|outlook|hotmail|live|yahoo|icloud|proton(mail)?|yandex|mail|gmx|aol|github|gitlab|google|facebook|instagram|twitter|x|linkedin|youtube|tiktok|reddit|medium|wordpress|blogspot|t|telegram|bsky|mastodon|keybase|gravatar|wikipedia|wikidata)\.[a-z.]+$/i;
 
 function pivotFrom(t) {
@@ -473,7 +475,11 @@ function pivotFrom(t) {
       const v = String(e.value).trim();
       const key = `${e.type}:${v.toLowerCase()}`;
       if (U.searched.has(key)) continue;
-      if (e.type === "username" && (v.length < 3 || /^\d+$/.test(v))) continue;
+      if (e.type === "username") {
+        // Yalnızca sonucun metninde / alanlarında geçen adlar (URL yolundaki "summary", "profile" gibi kelimeler değil)
+        const blob = `${r.title || ""} ${r.detail || ""} ${Object.values(r.meta || {}).join(" ")}`.toLowerCase();
+        if (v.length < 3 || /^\d+$/.test(v) || PIVOT_GENERIC.test(v) || (!blob.includes(v.toLowerCase()) && r.kind !== "username")) continue;
+      }
       if (e.type === "domain" && (hosts.has(v) || PIVOT_SKIP_DOMAINS.test(v))) continue;
       const tools = PIVOT_TOOLS[e.type].filter(id => T.registry.some(x => x.id === id));
       if (!tools.length || U.pivotCount + tools.length > U.pivotMax) return;

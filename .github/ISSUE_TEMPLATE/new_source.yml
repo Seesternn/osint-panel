@@ -1,0 +1,28 @@
+name: New source / tool
+description: Suggest a public data source or tool to add (ideally as a plugin)
+labels: [enhancement, source]
+body:
+  - type: input
+    id: source
+    attributes:
+      label: Source
+      placeholder: name and link
+    validations:
+      required: true
+  - type: dropdown
+    id: input
+    attributes:
+      label: Input type
+      multiple: true
+      options: [username, e-mail, phone, name, domain, IP, link, image, crypto address, other]
+  - type: textarea
+    id: value
+    attributes:
+      label: What would it add?
+  - type: checkboxes
+    id: rules
+    attributes:
+      label: Rules
+      options:
+        - label: The source is public and lawful to query (no leaked data, no ID/address lookup panels, no face recognition).
+          required: true

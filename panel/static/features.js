@@ -24,6 +24,7 @@ function entitiesOf(r, tool) {
   for (const m of text.matchAll(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g)) if (!/noreply|\.(png|jpg|gif)$/i.test(m[0])) add("email", m[0]);
   for (const m of text.matchAll(/(?:\+|00)\d[\d\s()-]{9,16}\d|\b0\d{3}[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}\b/g)) {
     const digits = m[0].replace(/\D/g, "");
+    if (/^\+0|^000|\d{4}-\d{2}-\d{2}|\d{2}:\d{2}/.test(m[0].trim())) continue;   // saat dilimi / tarih damgası, telefon değil
     if (digits.length >= 10 && digits.length <= 15) add("phone", m[0].replace(/\s+/g, " ").trim());
   }
   for (const m of text.matchAll(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g)) if (isPublicIPv4(m[0])) add("ip", m[0]);
