@@ -24,6 +24,7 @@ from tools import UA
 
 MAX_QUERIES = 6
 MAX_SAVED = 150
+NOT_PROFILE = re.compile(r"search|[?&](q|query|searchQuery)=|//api\.|/api/|/v\d+/|\.json(\?|$)", re.I)   # arama / API adresleri profil değildir
 CONFIRM = 2                 # art arda bu kadar taramada görülen / kaybolan değişiklik raporlanır
 _running = set()
 _lock = threading.Lock()
@@ -144,7 +145,8 @@ def _check_new(case, saved, old, changes, new_items, lang, log):
         res = runner.run_many([(tid, inp) for tid, inp, qq in tasks if qq == q], lang=lang, workers=4, budget_s=600)
         for tid, r in res.items():
             for row in r["rows"]:
-                if row.get("status") in ("found", "maybe") and row.get("url", "").startswith("http") and row.get("kind") not in ("warn", "figure"):
+                if row.get("status") in ("found", "maybe") and row.get("url", "").startswith("http") and row.get("kind") not in ("warn", "figure") \
+                        and not NOT_PROFILE.search(row["url"]):
                     k = "t:" + norm(row["url"])
                     if k[2:] and ("s:" + k[2:]) not in saved:
                         seen.setdefault(k, {"title": row.get("title", ""), "url": row["url"], "tool": tid, "query": q,

@@ -71,7 +71,7 @@ def _screenshot(url, png, timeout=60):
             "--no-default-browser-check", f"--user-data-dir={profile}", "--window-size=1366,2400",
             "--virtual-time-budget=8000", f"--user-agent={UA}", f"--screenshot={png}", url]
     if os.environ.get("CHROME_NO_SANDBOX") == "1" or (hasattr(os, "geteuid") and os.geteuid() == 0):
-        args.insert(1, "--no-sandbox")
+        args[1:1] = ["--no-sandbox", "--disable-dev-shm-usage"]
     try:
         subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=timeout)
     except subprocess.TimeoutExpired:

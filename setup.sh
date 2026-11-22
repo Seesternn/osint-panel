@@ -22,6 +22,7 @@ warn() { printf '\033[33m[!] %s\033[0m\n' "$*"; }
 need() { command -v "$1" >/dev/null 2>&1 || { echo "Eksik / missing: $1 — $2"; exit 1; }; }
 need git "https://git-scm.com"
 need uv  "curl -LsSf https://astral.sh/uv/install.sh | sh"
+need curl "https://curl.se"
 
 clone() {  # clone <url> <dir>
   [ -d "$2/.git" ] || git clone --depth 1 "$1" "$2"
@@ -86,6 +87,10 @@ if [ "$MINIMAL" = 0 ]; then
   if [ "$GEOCLIP" = 1 ]; then
     say "GeoCLIP (fotoğraftan konum / photo geolocation, ~2 GB)"
     venv tools/geoclip
+    if [ "$(uname)" = Linux ]; then
+      # Linux'ta varsayılan PyTorch CUDA'lı gelir (~2.5 GB); CPU sürümü yeterli ve çok daha küçük
+      uv pip install --quiet --python tools/geoclip/bin/python torch torchvision --index-url https://download.pytorch.org/whl/cpu
+    fi
     uv pip install --quiet --python tools/geoclip/bin/python geoclip
   else
     warn "GeoCLIP atlandı / skipped"
@@ -99,12 +104,18 @@ if [ "$MINIMAL" = 0 ]; then
   fi
 fi
 
+say "Veri listeleri / data lists (WhatsMyName, disposable e-mail domains)"
+curl -fsSL https://raw.githubusercontent.com/WebBreacher/WhatsMyName/main/wmn-data.json -o tools/wmn-data.json || warn "wmn-data.json indirilemedi / not downloaded"
+curl -fsSL https://raw.githubusercontent.com/disposable-email-domains/disposable-email-domains/main/disposable_email_blocklist.conf \
+  -o tools/disposable_domains.txt || warn "disposable_domains.txt indirilemedi / not downloaded"
+
 say "Sistem araçları / system tools"
 missing=()
-for b in exiftool phoneinfoga subfinder ffmpeg; do command -v "$b" >/dev/null || missing+=("$b"); done
+for b in exiftool phoneinfoga subfinder httpx ffmpeg; do command -v "$b" >/dev/null || missing+=("$b"); done
 if [ ${#missing[@]} -gt 0 ]; then
   warn "Bulunamadı / not found: ${missing[*]}"
   if command -v brew >/dev/null; then echo "    brew install ${missing[*]}"; else echo "    (paket yöneticinizle kurun / install with your package manager)"; fi
+  echo "    OCR (Linux): tesseract-ocr · screenshots: chromium"
 fi
 
 chmod +x launch_panel.sh run_panel.sh 2>/dev/null || true

@@ -13,6 +13,7 @@ import json
 import math
 import os
 import re
+import shutil
 import subprocess
 import threading
 import time
@@ -185,10 +186,39 @@ STREET_WORDS = re.compile(r"\b(cad(desi)?|cd\.?|sok(ağı|ak)?|sk\.?|mah(allesi)
                           r"platz|weg|gasse|calle|plaza|avenida|rua|praça|ulica|ul\.|проспект|улица)\b", re.I)
 
 
+def _tesseract(path):
+    """Linux / Docker: Tesseract ile satır satır yazı okuma (macOS Vision yardımcısı yoksa)."""
+    exe = shutil.which("tesseract")
+    if not exe:
+        return []
+    langs = os.environ.get("TESSERACT_LANGS", "eng+tur")
+    out = subprocess.run([exe, path, "stdout", "--psm", "11", "-l", langs, "tsv"], capture_output=True, text=True, timeout=90)
+    rows = {}
+    for l in out.stdout.splitlines()[1:]:
+        f = l.split("\t")
+        if len(f) < 12 or not f[11].strip():
+            continue
+        try:
+            conf = float(f[10])
+        except ValueError:
+            continue
+        if conf < 0:
+            continue
+        key = (f[2], f[3], f[4])                      # blok, paragraf, satır
+        rows.setdefault(key, []).append((conf, f[11].strip()))
+    lines = []
+    for words in rows.values():
+        c = sum(w[0] for w in words) / len(words) / 100
+        t = " ".join(w[1] for w in words)
+        if c >= 0.45 and len(t) >= 2:
+            lines.append(t)
+    return lines
+
+
 def run_ocr(path):
     exe = os.path.join(TOOLS, "ocr", "ocr")
     if not os.path.exists(exe):
-        return []
+        return _tesseract(path)
     out = subprocess.run([exe, path], capture_output=True, text=True, timeout=60)
     lines = []
     for l in out.stdout.splitlines():

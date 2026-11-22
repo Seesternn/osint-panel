@@ -1,0 +1,32 @@
+# OSINT Panel
+#   docker compose up -d --build          → http://127.0.0.1:5050
+#   docker compose run --rm osint-panel osint search torvalds
+#   docker compose exec osint-panel tools/ghunt/bin/ghunt login      (one-time, for GHunt)
+services:
+  osint-panel:
+    build:
+      context: .
+      args:
+        WITH_GEOCLIP: "${WITH_GEOCLIP:-0}"     # 1 = include the photo-geolocation model (~1 GB more)
+    image: osint-panel:latest
+    container_name: osint-panel
+    init: false                               # tini is already the entrypoint
+    ports:
+      # Only this computer can reach the panel. To expose it on your network, change to "5050:5050"
+      # AND set PANEL_TOKEN below.
+      - "127.0.0.1:5050:5050"
+    environment:
+      PANEL_TOKEN: "${PANEL_TOKEN:-}"         # optional access key: open http://host:5050/?token=<key> once
+      TZ: "${TZ:-Europe/Istanbul}"
+    volumes:
+      - osint-data:/data                      # settings, API keys, cases, evidence, user plugins
+      # - ./my-plugins:/data/plugins_user     # mount your own plugin folder instead
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # reach Ollama running on the host: http://host.docker.internal:11434
+    shm_size: "1gb"                           # headless Chromium (evidence screenshots)
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+volumes:
+  osint-data:
