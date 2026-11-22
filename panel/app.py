@@ -446,6 +446,7 @@ def api_tool(tool_id):
     job_id = uuid.uuid4().hex[:10]
     job = {"queue": queue.Queue(), "results": [], "cancel": threading.Event(), "done": False,
            "started": time.time(), "tool": tool_id, "dir": workdir, "proc": None, "id": job_id, "files": {},
+           "lang": "en" if inp.get("_lang") == "en" else "tr",
            "usernames": [str(next((inp[f["name"]] for f in tool["fields"] if f.get("required")), tool_id))],
            "query": str(next((inp.get(f["name"]) for f in tool["fields"] if str(inp.get(f["name"]) or "").strip()
                               and f.get("type") not in ("checkbox", "select", "number")),

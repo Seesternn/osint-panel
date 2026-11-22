@@ -309,6 +309,7 @@ $("#toolForm").onsubmit = async e => {
   const tool = T.registry.find(t => t.id === T.current);
   if (!tool || T.es) return;
   const fd = new FormData($("#toolForm"));
+  fd.append("_lang", typeof LANG === "string" ? LANG : "tr");
   const hasFile = [...fd.values()].some(v => v instanceof File && v.size);
   const hasText = [...fd.entries()].some(([k, v]) => typeof v === "string" && v.trim() && !$(`#f_${k}`)?.matches("select,[type=number],[type=checkbox]"));
   if (!$("#tMain").hidden && $("#tMain").required && !$("#tMain").value.trim()) return $("#tMain").focus();

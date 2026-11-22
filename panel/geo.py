@@ -306,7 +306,7 @@ GEO_SCHEMA = {
 }
 
 
-def _prompt(ctx):
+def _prompt(ctx, lang="tr"):
     return f"""Bu fotoğrafın çekildiği yeri bir OSINT coğrafi konum uzmanı gibi tahmin et.
 Görünen ipuçlarını tek tek değerlendir: tabelalar ve dil, plakalar, yol çizgileri ve trafik işaretleri, mimari, bitki örtüsü,
 iklim, güneşin açısı, elektrik direkleri, trafiğin hangi şeritten aktığı, mağaza / marka adları, arazi şekli.
@@ -314,7 +314,7 @@ Kendi bağımsız değerlendirmeni yap. Aşağıda fotoğraftan okunan yazılar 
 okunmuş olabilir, görüntüyle tutarlı olup olmadıklarını kontrol et.
 {ctx}
 Her ipucunun neyi gösterdiğini kısa yaz. Emin olmadığın yerde güveni düşük tut, uydurma ayrıntı ekleme.
-En fazla 3 alternatif ver. Tüm metinler Türkçe olsun. Yanıtı yalnızca JSON olarak ver."""
+En fazla 3 alternatif ver. Tüm metinler {'İngilizce (English)' if lang == 'en' else 'Türkçe'} olsun. Yanıtı yalnızca JSON olarak ver."""
 
 
 def _llm_cands(g, source):
@@ -337,7 +337,7 @@ GEMINI_TIMEOUT = 45
 
 
 def src_gemini(job, img_b64, mime, ctx):
-    return gemini_json(job, [{"inlineData": {"mimeType": mime, "data": img_b64}}, {"text": _prompt(ctx)}], GEO_SCHEMA)
+    return gemini_json(job, [{"inlineData": {"mimeType": mime, "data": img_b64}}, {"text": _prompt(ctx, job.get("lang", "tr"))}], GEO_SCHEMA)
 
 
 def gemini_json(job, parts, schema):
@@ -422,7 +422,7 @@ def src_claude(job, img_b64, mime, ctx):
                                "alternatives": {"type": "array", "items": {**GEO_SCHEMA["properties"]["alternatives"]["items"], "additionalProperties": False}}}}}},
             messages=[{"role": "user", "content": [
                 {"type": "image", "source": {"type": "base64", "media_type": mime, "data": img_b64}},
-                {"type": "text", "text": _prompt(ctx)}]}],
+                {"type": "text", "text": _prompt(ctx, job.get("lang", "tr"))}]}],
         )
     except anthropic.AuthenticationError:
         return None, "Anthropic anahtarı geçersiz"

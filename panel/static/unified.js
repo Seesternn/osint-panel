@@ -197,6 +197,7 @@ async function startTask(t) {
         body: JSON.stringify({ usernames: t.val, sites: [], nsfw: false, timeout: 20, source: "remote" }) });
     } else {
       const fd = new FormData();
+      fd.append("_lang", typeof LANG === "string" ? LANG : "tr");
       for (const [k, v] of Object.entries(t.fields)) fd.append(k, v === "$" ? t.val : v);
       if (t.id === "variants") {            // "Emre Tuna Ulaş" → ad: Emre Tuna, soyad: Ulaş
         const parts = t.val.split(/\s+/);

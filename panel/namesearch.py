@@ -30,6 +30,13 @@ SECTIONS = ["Tanınmış kişi", "Web araması", "Haberler", "Akademik", "GitHub
             "Şirket ve kamu kayıtları"]
 
 
+
+LANGS = ["tr", "en"]          # veri dili sırası; run_namesearch iş diline göre ayarlar
+
+
+def _l1():
+    return LANGS[0]
+
 def R(section, **kw):
     """Bölüm sonucu (emit'e verilecek sözlük)."""
     kw.setdefault("status", "found")
@@ -87,20 +94,20 @@ def _claims(ent, pid):
 
 def wikidata(name, place, org):
     api = "https://www.wikidata.org/w/api.php"
-    res = S.get(api, params={"action": "wbsearchentities", "search": name, "language": "tr", "uselang": "tr",
+    res = S.get(api, params={"action": "wbsearchentities", "search": name, "language": _l1(), "uselang": _l1(),
                              "type": "item", "limit": 8, "format": "json"}, timeout=15).json()
     ids = [x["id"] for x in res.get("search", [])]
     if not ids:
         return None, []
     ents = S.get(api, params={"action": "wbgetentities", "ids": "|".join(ids), "props": "claims|descriptions|labels|sitelinks",
-                              "languages": "tr|en", "format": "json"}, timeout=20).json().get("entities", {})
+                              "languages": "|".join(LANGS), "format": "json"}, timeout=20).json().get("entities", {})
     humans = []
     for i in ids:
         e = ents.get(i, {})
         if not any((v or {}).get("id") == "Q5" for v in _claims(e, "P31")):
             continue
-        label = (e.get("labels", {}).get("tr") or e.get("labels", {}).get("en") or {}).get("value", "")
-        desc = (e.get("descriptions", {}).get("tr") or e.get("descriptions", {}).get("en") or {}).get("value", "")
+        label = (e.get("labels", {}).get(LANGS[0]) or e.get("labels", {}).get(LANGS[1]) or {}).get("value", "")
+        desc = (e.get("descriptions", {}).get(LANGS[0]) or e.get("descriptions", {}).get(LANGS[1]) or {}).get("value", "")
         score = 2 if fold(label) == fold(name) else (1 if fold(name) in fold(label) else 0)
         for hint in (place, org):
             if hint and fold(hint) in fold(desc):
@@ -117,9 +124,9 @@ def wikidata(name, place, org):
     want = [v["id"] for vs in refs.values() for v in vs if isinstance(v, dict) and "id" in v][:40]
     labels = {}
     if want:
-        le = S.get(api, params={"action": "wbgetentities", "ids": "|".join(want), "props": "labels", "languages": "tr|en",
+        le = S.get(api, params={"action": "wbgetentities", "ids": "|".join(want), "props": "labels", "languages": "|".join(LANGS),
                                 "format": "json"}, timeout=15).json().get("entities", {})
-        labels = {k: (v.get("labels", {}).get("tr") or v.get("labels", {}).get("en") or {}).get("value", k) for k, v in le.items()}
+        labels = {k: (v.get("labels", {}).get(LANGS[0]) or v.get("labels", {}).get(LANGS[1]) or {}).get("value", k) for k, v in le.items()}
     lab = lambda pid: ", ".join(labels.get(v["id"], v["id"]) for v in refs[pid] if isinstance(v, dict))
     date = lambda pid: next((v["time"][1:11] for v in _claims(e, pid) if isinstance(v, dict) and "time" in v), "")
     img = next(iter(_claims(e, "P18")), "")
@@ -131,7 +138,7 @@ def wikidata(name, place, org):
     sites = [v for v in _claims(e, "P856") if isinstance(v, str)]
     sl = e.get("sitelinks", {})
     wiki = None
-    for lang in ("trwiki", "enwiki"):
+    for lang in [l + "wiki" for l in LANGS]:
         if lang in sl:
             t = sl[lang]["title"]
             try:
@@ -177,7 +184,7 @@ def section_news(name, extra):
     q = f'"{name}"' + (f" {extra}" if extra else "")
     # Google Haberler RSS (Türkçe, güncel)
     try:
-        r = S.get(f"https://news.google.com/rss/search?q={quote_plus(q)}&hl=tr&gl=TR&ceid=TR:tr", timeout=15)
+        r = S.get(f"https://news.google.com/rss/search?q={quote_plus(q)}" + ("&hl=en-US&gl=US&ceid=US:en" if _l1() == "en" else "&hl=tr&gl=TR&ceid=TR:tr"), timeout=15)
         for it in ET.fromstring(r.content).iter("item"):
             t = (it.findtext("title") or "").strip()
             if not t or fold(t) in seen:
@@ -482,7 +489,7 @@ def section_wiki_mentions(name, match):
     sec = "Wikipedia'da geçtiği yerler"
     out = []
     own = fold((match or {}).get("label", ""))
-    for lang in ("tr", "en"):
+    for lang in LANGS:
         d = S.get(f"https://{lang}.wikipedia.org/w/api.php", timeout=12, params={
             "action": "query", "list": "search", "srsearch": f'"{name}"', "srlimit": 8, "format": "json"}).json()
         for x in d.get("query", {}).get("search", []):
@@ -577,7 +584,7 @@ def section_web(job, name, place, org):
     out, seen, dead = [], set(), set()
     for q in qs[:10]:
         try:
-            res, unresp = searx.search(q, log=job["log"])
+            res, unresp = searx.search(q, lang=_l1(), log=job["log"])
         except Exception as e:
             return out + [R(sec, kind="warn", title="Web araması çalışmadı", detail=str(e)[:200])]
         dead |= {str(u[0]) if isinstance(u, (list, tuple)) else str(u) for u in unresp}
@@ -631,11 +638,12 @@ def gemini_summary(job, name, personas, rows_by_i):
             lines.append(f"[{i}] ({r.get('tags')}) {r.get('title', '')[:140]} | {r.get('detail', '')[:200]} | {meta} | {r.get('url', '')}")
     if not allowed:
         return None, "Özetlenecek kişi bulgusu yok"
+    lang_name = "İngilizce (English)" if job.get("lang") == "en" else "Türkçe"
     prompt = f"""Aşağıda "{name}" adıyla yapılan açık kaynak araştırmasının bulguları var; bulgular "olası kişi" gruplarına ayrılmış.
 Her olası kişi için 2-3 cümlelik tarafsız bir özet ve önemli bilgileri madde madde yaz. Yalnızca verilen bulguları kullan;
 her bilginin yanına dayandığı bulgu numaralarını (köşeli parantezdeki sayılar) "sources" alanına koy. Emin olmadığın bilgiyi yazma,
 tahmin yürütme, bulgularda olmayan kişisel bilgi (adres, telefon, aile) ekleme. Gruplar arasındaki çelişkileri ve araştırmacının
-yapabileceği doğrulama adımlarını da yaz. Tüm metin Türkçe olsun.
+yapabileceği doğrulama adımlarını da yaz. Tüm metin {lang_name} olsun.
 {''.join(chr(10) + l for l in lines)}"""
     g, err = geo.gemini_json(job, [{"text": prompt}], SUMMARY_SCHEMA)
     if not g:
@@ -649,6 +657,7 @@ yapabileceği doğrulama adımlarını da yaz. Tüm metin Türkçe olsun.
 
 # --------------------------------------------------------------------- ana çalıştırıcı
 def run_namesearch(job, inp, emit):
+    LANGS[:] = ["en", "tr"] if job.get("lang") == "en" else ["tr", "en"]
     import persona as P
     name = re.sub(r"\s+", " ", (inp.get("name") or "").strip())
     if len(name) < 3:
