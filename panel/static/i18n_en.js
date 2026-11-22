@@ -332,3 +332,51 @@ const I18N_EN = {
     "Akıllı arama ile başla": "Start with Smart search",
   },
 };
+
+/* ---------- araç çıktıları: e-posta ve GitHub / tool output: e-mail and GitHub ---------- */
+Object.assign(I18N_EN.phrases, {
+  "Kullanılmıyor (alınabilir)": "Not used (available)", "Kayıtlı / alınmış": "Registered / taken",
+  "Holehe sonuç dosyası üretmedi.": "Holehe produced no result file.", "Hız sınırı": "Rate limited", "İş": "Work",
+  "Geçerli bir e-posta girin.": "Enter a valid e-mail.", "Posta sağlayıcısı": "Mail provider", "Kullanıcı adı olarak dene": "Try as a username",
+  "Google hesabı": "Google account",
+  "Adres Google altyapısında; Google hesabı olması çok olası. Profil fotoğrafı ve ayrıntılar için GHunt aracını kullanın.":
+    "The address is on Google's infrastructure, so a Google account is very likely. Use GHunt for the profile photo and details.",
+  "MX kaydı yok": "No MX record", "Microsoft hesabı": "Microsoft account", "PGP anahtarı (keys.openpgp.org)": "PGP key (keys.openpgp.org)",
+  "Bu adrese ait herkese açık bir şifreleme anahtarı yayımlanmış.": "A public encryption key has been published for this address.",
+  "PGP anahtarı": "PGP key", "Yayımlanmış anahtar yok": "No published key", "Microsoft hesabı yok": "No Microsoft account",
+  "Yazım": "Syntax", "Tek kullanımlık adres": "Disposable address", "MX kaydı": "MX record", "Biçim geçerli": "Valid format",
+  "Geçersiz e-posta biçimi": "Invalid e-mail format", "Evet — geçici / tek kullanımlık posta servisi": "Yes — temporary / disposable mail service",
+  "Hayır": "No", "Evet": "Yes", "Evet (kişiye değil göreve ait olabilir)": "Yes (may belong to a role, not a person)",
+  "Alan adının posta sunucusu yok; bu adrese posta gidemez.": "The domain has no mail server; mail cannot be delivered to this address.",
+  "Sağlayıcı": "Provider", "SMTP kontrolü": "SMTP check", "user-scanner sonuç üretmedi.": "user-scanner produced no results.",
+  "GitHub kullanıcısı bulunamadı.": "GitHub user not found.",
+  "GitHub API sınırı doldu. Ayarlar'a bir GitHub erişim anahtarı ekleyin ya da bir saat bekleyin.":
+    "GitHub API limit reached. Add a GitHub access token in Settings or wait an hour.",
+  "Şirket": "Company", "Hesap açılışı": "Account created", "Son güncelleme": "Last updated", "Takipçi": "Followers",
+  "Herkese açık repo": "Public repos", "Kişisel site": "Personal site", "Commit e-postası": "Commit e-mail",
+  "Kullandığı diller": "Languages used", "Commit adı": "Commit name",
+  "Aynı anahtar başka sunucularda / sitelerde görülürse aynı kişiyi gösterir.": "If the same key shows up on other servers / sites, it points to the same person.",
+  "Kuruluş": "Organisation", "Doğrulanmış": "Verified", "Doğrulanmamış": "Unverified", "kişisel hesap": "personal account",
+  "iş / okul hesabı": "work / school account", "Kurumsal / rol adresi": "Role / shared address", "Not": "Note", "Konum": "Location", "Biyografi": "Bio", "Ad": "Name", "Web sitesi": "Website",
+  "Takip edilen": "Following", "Ülke": "Country", "Şehir": "City", "Hesap türü": "Account type",
+});
+I18N_EN.patterns.push(
+  ["Kurtarma e-postası: (.+)", "Recovery e-mail: $1"],
+  ["Bağlı hesap: (.+)", "Linked account: $1"],
+  ["'(.+)' adını Sherlock, Maigret veya Nexfil ile aratın; insanlar çoğu zaman aynı adı kullanır\\.", "Search '$1' with Sherlock, Maigret or Nexfil; people often reuse the same name."],
+  ["Belirsiz yanıt \\((.+)\\)", "Unclear response ($1)"],
+  ["Bu adresle bir Microsoft hesabı var \\((.+)\\)\\.", (k) => `A Microsoft account exists for this address (${k}).`],
+  ["SMTP bağlantısı: (.+):25", "SMTP connection: $1:25"],
+  ["(.+) SMTP üzerinden adres doğrulamayı genelde engeller; 'E-posta hesap kontrolü' ve Holehe daha güvenilir sonuç verir\\.",
+    "$1 usually blocks address verification over SMTP; 'E-mail account check' and Holehe are more reliable."],
+  ["Sunucu her adresi kabul ediyor \\(catch-all\\); adresin varlığı kesinleştirilemez\\. \\[(.+)\\]", "The server accepts every address (catch-all); the mailbox cannot be confirmed. [$1]"],
+  ["25 numaralı porta bağlanılamadı \\((.+)\\)\\. İnternet sağlayıcıların çoğu bu portu engeller; bu adım yalnızca 25\\. portu açık bir ağda \\(ör\\. sunucu / VPS\\) çalışır\\.",
+    "Could not connect to port 25 ($1). Most ISPs block this port; this step only works on a network with port 25 open (e.g. a server / VPS)."],
+  ["Sunucu yanıtı: (.+)", "Server response: $1"],
+  ["Geçici yanıt, kesin değil\\. \\[(.+?)\\] ?(.*)", "Temporary response, not conclusive. [$1] $2"],
+  ["(\\d+) commit'te geçiyor", "appears in $1 commits"],
+  ["(\\d+) SSH anahtarı", "$1 SSH keys"],
+  ["Kuruluş: (.+)", "Organisation: $1"],
+  ["(.+?)'(?:da|de|ta|te) ara", "Search on $1"],
+  ["GPG anahtarı e-postası: (.+)", "GPG key e-mail: $1"],
+);
