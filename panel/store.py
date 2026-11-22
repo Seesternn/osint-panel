@@ -46,6 +46,12 @@ SETTINGS = [
     ("demografix_api_key", "Genderize / Nationalize anahtarı",
      "İsteğe bağlı. Anahtarsız ayda ~2.500 ad sorgulanabilir; daha fazlası için.", True,
      "https://genderize.io/", "İsim araştırma"),
+    ("ollama_url", "Yerel yapay zekâ: Ollama adresi",
+     "İsteğe bağlı. Bilgisayarında Ollama çalışıyorsa adresi (varsayılan http://127.0.0.1:11434). Docker'da: http://host.docker.internal:11434", False,
+     "https://ollama.com/download", "İsim araştırma özeti, Konum bulucu"),
+    ("ollama_model", "Yerel yapay zekâ: Ollama modeli",
+     "Doldurulursa özetler ve fotoğraf yorumu Gemini yerine bu yerel modelle yapılır; veri bilgisayardan çıkmaz. Ör. qwen2.5:7b (metin), "
+     "qwen2.5vl:7b veya llava (fotoğraf). Önce terminalde: ollama pull <model>", False, "https://ollama.com/search", "İsim araştırma özeti, Konum bulucu"),
     ("h8mail_keys", "h8mail API anahtarları",
      "Ör. snusbase=xxx leak-lookup_pub=yyy (boşlukla ayır). Desteklenen servisler bağlantıdaki listede.", True,
      "https://github.com/khast3x/h8mail#apis", "h8mail"),
@@ -128,6 +134,19 @@ def init_db():
             title TEXT, url TEXT, detail TEXT, image TEXT, tags TEXT, status TEXT, kind TEXT,
             meta TEXT, note TEXT DEFAULT '', created REAL);
         CREATE INDEX IF NOT EXISTS items_case ON items(case_id);
+        CREATE TABLE IF NOT EXISTS evidence (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, case_id INTEGER, item_id INTEGER, url TEXT, final_url TEXT,
+            http_status INTEGER, captured_at TEXT, html_path TEXT, html_sha256 TEXT, png_path TEXT, png_sha256 TEXT,
+            manifest_path TEXT, manifest_sha256 TEXT, error TEXT);
+        CREATE INDEX IF NOT EXISTS evidence_case ON evidence(case_id);
+        CREATE TABLE IF NOT EXISTS watches (
+            case_id INTEGER PRIMARY KEY, enabled INTEGER DEFAULT 1, interval_h REAL DEFAULT 24,
+            last_run REAL, next_run REAL, last_error TEXT DEFAULT '', running INTEGER DEFAULT 0);
+        CREATE TABLE IF NOT EXISTS snapshots (case_id INTEGER, key TEXT, data TEXT, PRIMARY KEY (case_id, key));
+        CREATE TABLE IF NOT EXISTS changes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, case_id INTEGER, ts REAL, kind TEXT, title TEXT, detail TEXT,
+            url TEXT, seen INTEGER DEFAULT 0);
+        CREATE INDEX IF NOT EXISTS changes_case ON changes(case_id);
         """)
 
 
@@ -166,6 +185,8 @@ def update_case(cid, name=None, notes=None):
 
 def delete_case(cid):
     with db() as con:
+        for t in ("evidence", "snapshots", "changes", "watches"):
+            con.execute(f"DELETE FROM {t} WHERE case_id=?", (cid,))
         con.execute("DELETE FROM items WHERE case_id=?", (cid,))
         con.execute("DELETE FROM cases WHERE id=?", (cid,))
 
@@ -200,6 +221,102 @@ def update_item(iid, note):
 def delete_item(iid):
     with db() as con:
         con.execute("DELETE FROM items WHERE id=?", (iid,))
+
+
+# ------------------------------------------------------------------ kanıt arşivi
+EVIDENCE_COLS = ("case_id", "item_id", "url", "final_url", "http_status", "captured_at", "html_path", "html_sha256",
+                 "png_path", "png_sha256", "manifest_path", "manifest_sha256", "error")
+
+
+def add_evidence(rec):
+    with db() as con:
+        cur = con.execute(f"INSERT INTO evidence({','.join(EVIDENCE_COLS)}) VALUES ({','.join('?' * len(EVIDENCE_COLS))})",
+                          tuple(rec.get(c) for c in EVIDENCE_COLS))
+        return cur.lastrowid
+
+
+def list_evidence(cid):
+    with db() as con:
+        return [dict(r) for r in con.execute("SELECT * FROM evidence WHERE case_id=? ORDER BY id", (cid,))]
+
+
+def get_evidence(eid):
+    with db() as con:
+        r = con.execute("SELECT * FROM evidence WHERE id=?", (eid,)).fetchone()
+    return dict(r) if r else None
+
+
+def get_item(iid):
+    with db() as con:
+        r = con.execute("SELECT * FROM items WHERE id=?", (iid,)).fetchone()
+    return (dict(r) | {"meta": json.loads(r["meta"] or "{}")}) if r else None
+
+
+# ------------------------------------------------------------------ izleme listesi
+def get_watch(cid):
+    with db() as con:
+        r = con.execute("SELECT * FROM watches WHERE case_id=?", (cid,)).fetchone()
+    return dict(r) if r else None
+
+
+def set_watch(cid, enabled, interval_h):
+    now = time.time()
+    with db() as con:
+        con.execute("""INSERT INTO watches(case_id, enabled, interval_h, next_run) VALUES (?,?,?,?)
+                       ON CONFLICT(case_id) DO UPDATE SET enabled=excluded.enabled, interval_h=excluded.interval_h,
+                       next_run=excluded.next_run""", (cid, int(bool(enabled)), float(interval_h), now + float(interval_h) * 3600))
+    return get_watch(cid)
+
+
+def due_watches():
+    with db() as con:
+        return [dict(r) for r in con.execute(
+            "SELECT * FROM watches WHERE enabled=1 AND running=0 AND (next_run IS NULL OR next_run<=?)", (time.time(),))]
+
+
+def watch_mark(cid, running=None, last_error=None, done=False):
+    with db() as con:
+        if running is not None:
+            con.execute("UPDATE watches SET running=? WHERE case_id=?", (int(running), cid))
+        if done:
+            r = con.execute("SELECT interval_h FROM watches WHERE case_id=?", (cid,)).fetchone()
+            now = time.time()
+            con.execute("UPDATE watches SET last_run=?, next_run=?, running=0, last_error=? WHERE case_id=?",
+                        (now, now + (r["interval_h"] if r else 24) * 3600, last_error or "", cid))
+
+
+def get_snapshot(cid):
+    with db() as con:
+        return {r["key"]: json.loads(r["data"]) for r in con.execute("SELECT key, data FROM snapshots WHERE case_id=?", (cid,))}
+
+
+def put_snapshot(cid, snap):
+    with db() as con:
+        con.execute("DELETE FROM snapshots WHERE case_id=?", (cid,))
+        con.executemany("INSERT INTO snapshots(case_id, key, data) VALUES (?,?,?)",
+                        [(cid, k, json.dumps(v, ensure_ascii=False)) for k, v in snap.items()])
+
+
+def add_changes(cid, rows):
+    now = time.time()
+    with db() as con:
+        con.executemany("INSERT INTO changes(case_id, ts, kind, title, detail, url) VALUES (?,?,?,?,?,?)",
+                        [(cid, now, r["kind"], r.get("title", ""), r.get("detail", ""), r.get("url", "")) for r in rows])
+
+
+def list_changes(cid, limit=500):
+    with db() as con:
+        return [dict(r) for r in con.execute("SELECT * FROM changes WHERE case_id=? ORDER BY id DESC LIMIT ?", (cid, limit))]
+
+
+def unseen_changes():
+    with db() as con:
+        return {r["case_id"]: r["n"] for r in con.execute("SELECT case_id, COUNT(*) AS n FROM changes WHERE seen=0 GROUP BY case_id")}
+
+
+def mark_changes_seen(cid):
+    with db() as con:
+        con.execute("UPDATE changes SET seen=1 WHERE case_id=?", (cid,))
 
 
 init_db()

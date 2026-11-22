@@ -188,3 +188,19 @@ ABOUT_EN = {
                     "Search query, number of pages, language.", "Result titles, links and snippets.",
                     "Search engines may temporarily block many rapid queries, so they are spaced out."),
 }
+
+
+# English tool names (server side: CLI, REST, reports). The browser UI translates the same names via i18n_en.js.
+TITLES_EN = {
+    "namesearch": "Name research", "websearch": "Web search", "email-accounts": "E-mail account check", "email-verify": "E-mail verifier",
+    "phonenumbers": "Number parser", "phone-search": "Number-format search", "reverse-image": "Reverse image search",
+    "ipgeo": "IP lookup", "github": "GitHub profile extractor", "telegram": "Telegram check", "variants": "Username generator",
+    "hibp": "HIBP breach lookup", "email-header": "E-mail header analyzer", "geofusion": "Location finder",
+    "geolocate": "Photo geolocation (Claude)", "image-compare": "Photo matching", "ela": "Forgery analysis (ELA)",
+    "video": "Video analysis", "crtsh": "Certificate logs (crt.sh)", "dnstwist": "Lookalike domains (dnstwist)",
+    "site-intel": "Tracker analysis", "dorks": "Google dork generator", "doc-meta": "Document metadata", "whois": "WHOIS / DNS",
+    "social-activity": "Reddit / HN / Keybase",
+}
+GROUPS_EN = {"Çalışma alanı": "Workspace", "Kişi": "Person", "Kullanıcı adı": "Username", "E-posta": "E-mail", "Telefon": "Phone",
+             "Platform": "Platform", "Görsel": "Image", "Alan adı": "Domain", "Kripto": "Crypto", "Arama": "Search",
+             "Çerçeveler": "Frameworks", "Eklentiler": "Plugins"}

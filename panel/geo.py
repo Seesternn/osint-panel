@@ -340,9 +340,43 @@ def src_gemini(job, img_b64, mime, ctx):
     return gemini_json(job, [{"inlineData": {"mimeType": mime, "data": img_b64}}, {"text": _prompt(ctx, job.get("lang", "tr"))}], GEO_SCHEMA)
 
 
+def ollama_ready():
+    return bool(store.get("ollama_model"))
+
+
+def ollama_json(job, parts, schema):
+    """Yerel Ollama sunucusundan JSON yanıt ister (veri bilgisayardan çıkmaz). Görsel için görsel destekli model gerekir."""
+    url = (store.get("ollama_url") or "http://127.0.0.1:11434").rstrip("/")
+    model = store.get("ollama_model")
+    text = "\n\n".join(p["text"] for p in parts if "text" in p)
+    images = [p["inlineData"]["data"] for p in parts if "inlineData" in p]
+    msg = {"role": "user", "content": text + "\n\nYanıtı yalnızca şemaya uyan JSON olarak ver."}
+    if images:
+        msg["images"] = images
+    job.get("log", lambda m: None)(f"Ollama ({model}) çalışıyor…")
+    for fmt in (schema, "json"):
+        try:
+            r = requests.post(f"{url}/api/chat", json={"model": model, "messages": [msg], "stream": False, "format": fmt,
+                                                      "options": {"temperature": 0.2}}, timeout=int(store.get("ollama_timeout", 180)))
+        except requests.RequestException as e:
+            return None, f"Ollama'ya bağlanılamadı ({url}): {type(e).__name__}"
+        if r.status_code == 404:
+            return None, f"Ollama modeli bulunamadı: {model} (ollama pull {model})"
+        if r.status_code != 200:
+            continue
+        try:
+            return json.loads(r.json()["message"]["content"]), None
+        except Exception:
+            continue
+    return None, "Ollama yanıtı çözümlenemedi"
+
+
 def gemini_json(job, parts, schema):
-    """Gemini'den JSON yanıt ister (ücretsiz katman). Model yoğun / kota dolu / yavaşsa sıradakine geçer.
+    """Yapay zekâdan JSON yanıt ister. Ayarlarda bir Ollama modeli girildiyse yerel model kullanılır (veri dışarı çıkmaz);
+    yoksa Gemini (ücretsiz katman) — model yoğun / kota dolu / yavaşsa sıradakine geçer.
     Dönüş: (sözlük, None) ya da (None, hata metni)."""
+    if ollama_ready():
+        return ollama_json(job, parts, schema)
     models, tmo = GEMINI_MODELS, GEMINI_TIMEOUT
     key = store.get("gemini_api_key")
     if not key:
@@ -545,7 +579,7 @@ def run_geofusion(job, inp, emit):
     with ThreadPoolExecutor(max_workers=2) as ex:
         futs = {}
         if use("use_gemini"):
-            log("Gemini fotoğrafı yorumluyor…") if store.get("gemini_api_key") else None
+            log("Gemini fotoğrafı yorumluyor…") if store.get("gemini_api_key") and not ollama_ready() else None
             futs["gemini"] = ex.submit(src_gemini, job, img_b64, "image/jpeg", ctx)
         if use("use_claude"):
             futs["claude"] = ex.submit(src_claude, job, img_b64, "image/jpeg", ctx)

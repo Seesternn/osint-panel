@@ -82,6 +82,7 @@ function renderNav() {
     ${items.map(t => `<button type="button" class="nav-item ${T.current === t.id ? "active" : ""}" data-tool="${t.id}" title="${esc(t.title)}">
         ${svg(t.icon)}<span>${esc(t.title)}</span>${keyBadge(t.id)}${T.running.has(t.id) ? '<i class="busy"></i>' : ""}</button>`).join("")}`).join("")
     || '<div class="nav-group">Eşleşen araç yok</div>';
+  if (typeof paintWatchBadge === "function") paintWatchBadge();
 }
 const GROUP_ORDER = ["Çalışma alanı", "Kişi", "Kullanıcı adı", "E-posta", "Telefon", "Platform", "Görsel", "Alan adı", "Kripto", "Arama", "Çerçeveler", "Eklentiler"];
 const sortGroups = groups => Object.entries(groups).sort(([a], [b]) =>

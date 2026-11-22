@@ -62,6 +62,13 @@
     <span id="uFileName" class="muted"></span>
   </div>
   <div id="uExtra" class="u-extra"></div>
+  <div class="u-pivot">
+    <label class="check small"><input type="checkbox" id="uPivot"> Otomatik pivot: bulunan e-posta, kullanıcı adı, alan adı, telefon ve IP'leri de tara</label>
+    <span class="u-pivot-opts muted">
+      <select id="uPivotDepth"><option value="1">1 adım</option><option value="2">2 adım</option></select>
+      en fazla <input id="uPivotMax" type="number" min="1" max="100" value="20"> ek tarama
+    </span>
+  </div>
   <details class="opts u-tools" id="uToolsBox">
     <summary>Çalışacak araçlar <span id="uToolCount" class="muted"></span></summary>
     <div id="uToolList" class="u-tool-list"></div>
@@ -82,6 +89,7 @@
     <nav class="tabs" id="uTabs">
       <button class="chip active" data-utab="merged">Birleşik sonuçlar</button>
       <button class="chip" data-utab="info">Bilgiler ve bağlantılar</button>
+      <button class="chip" data-utab="graph">Grafik</button>
     </nav>
     <div class="filters"><input id="uFilter" type="search" placeholder="Sonuçlarda ara"></div>
   </div>
@@ -248,6 +256,7 @@
       <input id="caseName" class="case-name" type="text" spellcheck="false">
       <div class="case-actions">
         <button type="button" class="pill-btn" id="caseActivate">Aktif vaka yap</button>
+        <button type="button" class="pill-btn" id="caseArchiveAll" title="Bağlantıları ekran görüntüsü, HTML ve SHA-256 özetiyle arşivle">Kanıtları arşivle</button>
         <a class="pill-btn" id="caseReport" target="_blank" rel="noopener">Rapor / PDF</a>
         <button type="button" class="pill-btn danger-btn" id="caseDelete">Sil</button>
       </div>
@@ -257,6 +266,8 @@
       <nav class="tabs" id="caseTabs">
         <button class="chip active" data-ctab="items">Bulgular</button>
         <button class="chip" data-ctab="graph">Bağlantı grafiği</button>
+        <button class="chip" data-ctab="timeline">Zaman çizelgesi</button>
+        <button class="chip" data-ctab="watch">İzleme</button>
         <button class="chip" data-ctab="notes">Notlar</button>
       </nav>
       <div class="filters"><input id="caseFilter" type="search" placeholder="Bulgularda ara"></div>
@@ -266,6 +277,19 @@
       <div class="graph-legend" id="graphLegend"></div>
       <div id="caseGraph" class="graph"></div>
       <p class="note">Düğümler sürüklenebilir. Bir düğüme çift tıklayınca bağlantısı açılır. Aynı e-posta, telefon, alan adı, IP veya kullanıcı adı farklı bulgularda geçiyorsa tek düğümde birleşir.</p>
+    </div>
+    <div id="caseTimelineWrap" hidden><div id="caseTimeline"></div></div>
+    <div id="caseWatchWrap" hidden>
+      <div class="watch-box">
+        <label class="check"><input type="checkbox" id="watchEnabled"> Bu vakayı düzenli olarak yeniden tara</label>
+        <label class="watch-int">Sıklık
+          <select id="watchInterval"><option value="6">6 saatte bir</option><option value="12">12 saatte bir</option>
+            <option value="24" selected>Günde bir</option><option value="72">3 günde bir</option><option value="168">Haftada bir</option></select></label>
+        <button type="button" class="pill-btn" id="watchRunNow">Şimdi tara</button>
+        <span class="muted" id="watchStatus"></span>
+      </div>
+      <p class="note" id="watchQueries"></p>
+      <div id="watchChanges"></div>
     </div>
     <div id="caseNotesWrap" hidden>
       <textarea id="caseNotes" rows="16" placeholder="Bu vaka hakkında notlar… (otomatik kaydedilir)"></textarea>

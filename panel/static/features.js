@@ -253,6 +253,7 @@ async function openCase(id) {
   $("#caseActivate").disabled = C.current === id;
   const tools = new Set(caseData.items.map(i => i.tool));
   $("#caseMeta").textContent = `${caseData.items.length} bulgu · ${tools.size} araç · oluşturma ${new Date(caseData.created * 1000).toLocaleDateString("tr-TR")}`;
+  await loadEvidence();
   showCaseTab(C.tab || "items");
 }
 $("#caseName").onchange = async () => {
@@ -283,9 +284,13 @@ function showCaseTab(tab) {
   $("#caseItems").hidden = tab !== "items";
   $("#caseGraphWrap").hidden = tab !== "graph";
   $("#caseNotesWrap").hidden = tab !== "notes";
+  $("#caseTimelineWrap").hidden = tab !== "timeline";
+  $("#caseWatchWrap").hidden = tab !== "watch";
   $("#caseFilter").parentElement.hidden = tab !== "items";
   if (tab === "items") renderCaseItems();
   if (tab === "graph") renderGraph();
+  if (tab === "timeline") renderTimeline();
+  if (tab === "watch") renderWatch();
 }
 
 const toolTitle = id => id === "sherlock" ? "Sherlock" : (T.registry.find(t => t.id === id)?.title || id);
@@ -308,15 +313,26 @@ function renderCaseItems() {
             <div class="t1">${esc(i.title)}</div>
             ${i.url ? `<div class="t2"><a href="${esc(i.url)}" target="_blank" rel="noopener noreferrer">${esc(i.url)}</a></div>` : ""}
             ${i.detail ? `<div class="t3">${esc(i.detail)}</div>` : ""}
+            ${evidenceBadge(i)}
             <input class="item-note" data-note="${i.id}" value="${esc(i.note || "")}" placeholder="not ekle…">
           </div>
           <div class="ractions"><span class="tag2">${esc(i.tags || "")}</span>
+            ${i.url && /^https?:/.test(i.url) ? `<button type="button" class="rbtn" data-evid="${i.id}" title="Kanıt olarak arşivle (ekran görüntüsü + HTML + SHA-256)">⎙</button>` : ""}
             <button type="button" class="rbtn" data-cchain="${i.id}" title="Bununla devam et">→</button>
             <button type="button" class="rbtn" data-del="${i.id}" title="Vakadan çıkar">×</button></div>
         </div>`).join("")}</div></section>`;
   }).join("");
 }
 $("#caseItems").addEventListener("click", async e => {
+  const ev = e.target.closest("[data-evid]");
+  if (ev) {
+    ev.disabled = true; ev.textContent = "…";
+    try {
+      const rec = await api(`/api/items/${ev.dataset.evid}/evidence`, { method: "POST" });
+      toast(rec.error && !rec.png_sha256 && !rec.html_sha256 ? "Arşivlenemedi: " + rec.error : "Kanıt arşivlendi");
+    } catch (err) { toast("Arşivlenemedi: " + err.message); }
+    await loadEvidence(); return renderCaseItems();
+  }
   const del = e.target.closest("[data-del]");
   if (del) {
     await api(`/api/items/${del.dataset.del}`, { method: "DELETE" });
@@ -494,3 +510,113 @@ $("#settingsForm").addEventListener("click", async e => {
   loadSettings();
 });
 refreshKeyStatus();
+
+
+/* ---------------- kanıt arşivi ---------------- */
+C.evidence = {};
+async function loadEvidence() {
+  try {
+    const d = await api(`/api/cases/${C.open}/evidence`);
+    C.evidence = {};
+    d.items.forEach(e => (C.evidence[e.item_id] ||= []).push(e));
+    C.chrome = d.chrome;
+    const j = d.job;
+    $("#caseArchiveAll").textContent = j && j.done < j.total ? `Arşivleniyor ${j.done}/${j.total}…` : "Kanıtları arşivle";
+    return j;
+  } catch { return null; }
+}
+function evidenceBadge(i) {
+  const list = C.evidence?.[i.id];
+  if (!list?.length) return "";
+  const e = list[list.length - 1];
+  const ok = e.png_sha256 || e.html_sha256;
+  const when = new Date(e.captured_at).toLocaleString(LANG === "en" ? "en-GB" : "tr-TR");
+  return `<div class="ev-badge ${ok ? "" : "bad"}">
+    ${e.has_png ? `<a href="/api/evidence/${e.id}/png" target="_blank" rel="noopener"><img src="/api/evidence/${e.id}/png" alt="" loading="lazy"></a>` : ""}
+    <div><b>${ok ? "Kanıt arşivlendi" : "Arşivlenemedi"}</b> · ${esc(when)}${e.http_status ? ` · HTTP ${e.http_status}` : ""}
+      ${e.png_sha256 ? `<div class="mono">PNG SHA-256 ${esc(e.png_sha256.slice(0, 16))}…</div>` : ""}
+      ${e.html_sha256 ? `<div class="mono">HTML SHA-256 ${esc(e.html_sha256.slice(0, 16))}…</div>` : ""}
+      ${e.error ? `<div class="muted">${esc(e.error)}</div>` : ""}
+      <div class="ev-links">${e.has_html ? `<a href="/api/evidence/${e.id}/html">HTML</a>` : ""} <a href="/api/evidence/${e.id}/manifest">manifest.json</a></div>
+    </div></div>`;
+}
+$("#caseArchiveAll").onclick = async () => {
+  try {
+    const s = await api(`/api/cases/${C.open}/evidence`, { method: "POST" });
+    if (!s.total) return toast("Arşivlenecek yeni bağlantı yok");
+    if (!C.chrome) toast("Chrome / Chromium bulunamadı: yalnızca HTML ve başlıklar arşivlenecek");
+    const tick = async () => {
+      const j = await loadEvidence();
+      if (C.tab === "items") renderCaseItems();
+      if (j && j.done < j.total) setTimeout(tick, 2000); else toast("Arşivleme bitti");
+    };
+    tick();
+  } catch (err) { toast("Arşivlenemedi: " + err.message); }
+};
+
+/* ---------------- zaman çizelgesi ---------------- */
+async function renderTimeline() {
+  const box = $("#caseTimeline");
+  box.innerHTML = '<div class="empty">Yükleniyor…</div>';
+  let ev = [];
+  try { ev = (await api(`/api/cases/${C.open}/timeline`)).events; } catch {}
+  if (!ev.length) { box.innerHTML = '<div class="empty">Bu vakada tarih içeren bulgu yok.</div>'; return; }
+  const years = {};
+  ev.forEach(e => (years[e.date.slice(0, 4)] ||= []).push(e));
+  box.innerHTML = Object.entries(years).map(([y, list]) => `
+    <section class="tl-year"><h3>${esc(y)} <span class="n">${list.length}</span></h3>
+      ${list.map(e => `<div class="tl-row k-${e.kind}">
+        <span class="tl-date mono">${esc(e.precision === "year" ? e.date.slice(0, 4) : e.date)}</span>
+        <span class="tl-dot"></span>
+        <div><span class="tl-label">${esc(e.label)}</span>
+          <div class="t1">${e.url ? `<a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${esc(e.title)}</a>` : esc(e.title)}</div>
+          ${e.tool && !["evidence", "watch"].includes(e.tool) ? `<span class="muted">${esc(toolTitle(e.tool))}</span>` : ""}</div>
+      </div>`).join("")}</section>`).join("");
+}
+
+/* ---------------- izleme ---------------- */
+async function renderWatch() {
+  let d;
+  try { d = await api(`/api/cases/${C.open}/watch`); } catch { return; }
+  const w = d.watch;
+  $("#watchEnabled").checked = !!w.enabled;
+  $("#watchInterval").value = String(Math.round(w.interval_h || 24));
+  const fmt = t => t ? new Date(t * 1000).toLocaleString(LANG === "en" ? "en-GB" : "tr-TR") : "–";
+  $("#watchStatus").textContent = w.running ? "Taranıyor…" : `Son tarama: ${fmt(w.last_run)}${w.enabled ? ` · sonraki: ${fmt(w.next_run)}` : ""}${w.last_error ? ` · hata: ${w.last_error}` : ""}`;
+  $("#watchQueries").textContent = d.queries.length ? `İzlenen değerler: ${d.queries.join(", ")}` : "Vakada izlenecek arama değeri yok; önce bulgu kaydedin.";
+  $("#watchChanges").innerHTML = d.changes.length ? `<div class="rlist">${d.changes.map(c => `
+    <div class="ritem ch-row ${c.seen ? "" : "unseen"}"><div class="thumb"><i class="dot ${/kayboldu/.test(c.kind) ? "error" : /Yeni/.test(c.kind) ? "found" : "maybe"}"></i></div>
+      <div><div class="t1">${esc(c.kind)} · ${esc(c.title)}</div>
+        ${c.url ? `<div class="t2"><a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">${esc(c.url)}</a></div>` : ""}
+        ${c.detail ? `<div class="t3">${esc(c.detail)}</div>` : ""}</div>
+      <div class="ractions"><span class="tag2">${esc(fmt(c.ts))}</span></div></div>`).join("")}</div>`
+    : '<div class="empty">Henüz değişiklik kaydı yok. İlk tarama mevcut durumu kaydeder; sonraki taramalar farkları burada gösterir.</div>';
+  if (w.running) setTimeout(() => C.tab === "watch" && renderWatch(), 4000);
+  if (d.changes.some(c => !c.seen)) api(`/api/cases/${C.open}/changes/seen`, { method: "POST" }).then(refreshWatchBadge);
+}
+async function saveWatch() {
+  await api(`/api/cases/${C.open}/watch`, { method: "POST", body: { enabled: $("#watchEnabled").checked, interval_h: +$("#watchInterval").value } });
+  toast($("#watchEnabled").checked ? "İzleme açıldı" : "İzleme kapatıldı");
+  renderWatch();
+}
+$("#watchEnabled").onchange = saveWatch;
+$("#watchInterval").onchange = () => $("#watchEnabled").checked && saveWatch();
+$("#watchRunNow").onclick = async () => {
+  await api(`/api/cases/${C.open}/watch/run?lang=${LANG}`, { method: "POST" });
+  toast("Tarama başladı; birkaç dakika sürebilir");
+  renderWatch();
+};
+async function refreshWatchBadge() {
+  try {
+    const u = await api("/api/watch/unseen");
+    C.watchN = Object.values(u).reduce((a, b) => a + b, 0);
+    paintWatchBadge();
+  } catch {}
+}
+function paintWatchBadge() {
+  const item = document.querySelector('.nav-item[data-tool="cases"]');
+  item?.querySelector(".watch-n")?.remove();
+  if (C.watchN && item) item.insertAdjacentHTML("beforeend", `<span class="watch-n" title="İzlemede yeni değişiklik">${C.watchN}</span>`);
+}
+setInterval(refreshWatchBadge, 60000);
+setTimeout(refreshWatchBadge, 1500);

@@ -647,3 +647,63 @@ I18N_EN.patterns.push(
 
 /* ---------- eklentiler ve yeni türler ---------- */
 Object.assign(I18N_EN.phrases, { "Kripto adresi": "Crypto address", "Kripto": "Crypto", "Eklentiler": "Plugins" });
+
+/* ---------- kanıt arşivi, zaman çizelgesi, izleme ---------- */
+Object.assign(I18N_EN.phrases, {
+  "Kanıtları arşivle": "Archive evidence", "Bağlantıları ekran görüntüsü, HTML ve SHA-256 özetiyle arşivle": "Archive links with a screenshot, HTML and SHA-256 hash",
+  "Kanıt olarak arşivle (ekran görüntüsü + HTML + SHA-256)": "Archive as evidence (screenshot + HTML + SHA-256)",
+  "Kanıt arşivlendi": "Evidence archived", "Arşivlenemedi": "Could not archive", "Arşivlenecek yeni bağlantı yok": "No new links to archive",
+  "Chrome / Chromium bulunamadı: yalnızca HTML ve başlıklar arşivlenecek": "Chrome / Chromium not found: only HTML and headers will be archived",
+  "Arşivleme bitti": "Archiving finished", "Chrome / Chromium bulunamadı": "Chrome / Chromium not found", "ekran görüntüsü zaman aşımı": "screenshot timed out",
+  "ekran görüntüsü alınamadı": "screenshot failed", "arşivlenemedi": "could not archive",
+  "Bu bulgunun arşivlenebilir herkese açık bir bağlantısı yok.": "This finding has no public link that can be archived.",
+  "Zaman çizelgesi": "Timeline", "İzleme": "Watch", "Bu vakada tarih içeren bulgu yok.": "No findings with dates in this case.",
+  "vakaya eklendi": "added to case", "kanıt arşivlendi": "evidence archived",
+  "Bu vakayı düzenli olarak yeniden tara": "Re-scan this case regularly", "Sıklık": "Frequency", "6 saatte bir": "Every 6 hours",
+  "12 saatte bir": "Every 12 hours", "Günde bir": "Daily", "3 günde bir": "Every 3 days", "Haftada bir": "Weekly", "Şimdi tara": "Scan now",
+  "Taranıyor…": "Scanning…", "Vakada izlenecek arama değeri yok; önce bulgu kaydedin.": "No search values to watch in this case; save findings first.",
+  "Henüz değişiklik kaydı yok. İlk tarama mevcut durumu kaydeder; sonraki taramalar farkları burada gösterir.":
+    "No changes recorded yet. The first scan records the current state; later scans show the differences here.",
+  "İzleme açıldı": "Watch enabled", "İzleme kapatıldı": "Watch disabled", "Tarama başladı; birkaç dakika sürebilir": "Scan started; it may take a few minutes",
+  "İzlemede yeni değişiklik": "New changes in watched cases", "Yeni hesap / bulgu": "New account / finding", "Profil fotoğrafı değişti": "Profile photo changed",
+  "Profil bilgisi değişti": "Profile text changed", "Hesap kayboldu": "Account disappeared", "İzleme başladı": "Watch started",
+  "2 taramadır görülmüyor (silinmiş, gizlenmiş ya da adı değişmiş olabilir)": "Not seen in 2 scans (may be deleted, hidden or renamed)",
+});
+I18N_EN.patterns.push(
+  ["Arşivleniyor (\\d+)/(\\d+)…", "Archiving $1/$2…"],
+  ["Son tarama: (.+)", (r) => `Last scan: ${r.replace(" · sonraki: ", " · next: ").replace(" · hata: ", " · error: ")}`],
+  ["İzlenen değerler: (.+)", "Watched values: $1"],
+  ["(\\d+) hesap / bulgu kaydedildi", "$1 accounts / findings recorded"],
+  ["Arşivlenemedi: (.+)", "Could not archive: $1"],
+  ["PNG SHA-256 (.+)", "PNG SHA-256 $1"],
+);
+
+Object.assign(I18N_EN.phrases, {
+  "Otomatik pivot: bulunan e-posta, kullanıcı adı, alan adı, telefon ve IP'leri de tara": "Auto-pivot: also scan e-mails, usernames, domains, phones and IPs that are found",
+  "1 adım": "1 step", "2 adım": "2 steps", "en fazla": "at most", "ek tarama": "extra scans", "Grafik": "Graph",
+  "Ortadaki düğüm aranan değer; renkli düğümler otomatik pivotla bulunan değerler. Bir düğüme çift tıklayınca bağlantısı açılır.":
+    "The central node is the searched value; coloured nodes are values found through auto-pivot. Double-click a node to open its link.",
+});
+
+Object.assign(I18N_EN.phrases, {
+  "Yerel yapay zekâ: Ollama adresi": "Local AI: Ollama URL", "Yerel yapay zekâ: Ollama modeli": "Local AI: Ollama model",
+  "İsteğe bağlı. Bilgisayarında Ollama çalışıyorsa adresi (varsayılan http://127.0.0.1:11434). Docker'da: http://host.docker.internal:11434":
+    "Optional. The address of Ollama if it runs on your computer (default http://127.0.0.1:11434). In Docker: http://host.docker.internal:11434",
+  "Doldurulursa özetler ve fotoğraf yorumu Gemini yerine bu yerel modelle yapılır; veri bilgisayardan çıkmaz. Ör. qwen2.5:7b (metin), qwen2.5vl:7b veya llava (fotoğraf). Önce terminalde: ollama pull <model>":
+    "If set, summaries and photo interpretation use this local model instead of Gemini; data never leaves your computer. E.g. qwen2.5:7b (text), qwen2.5vl:7b or llava (photos). First run: ollama pull <model>",
+  "İsim araştırma özeti, Konum bulucu": "Name research summary, Location finder", "Yapay zekâ özeti": "AI summary",
+  "Kaynaklı özet (Gemini anahtarı ya da yerel Ollama)": "Sourced summary (Gemini key or local Ollama)", "Yapay zekâ yorumu": "AI interpretation",
+  "Kullan (Gemini anahtarı ya da yerel Ollama varsa)": "Use (if a Gemini key or local Ollama is set)", "Kullanma": "Don't use",
+  "Ollama yanıtı çözümlenemedi": "Could not parse the Ollama response",
+});
+I18N_EN.patterns.push(
+  ["Ollama \\((.+)\\) çalışıyor…", "Ollama ($1) is running…"],
+  ["Ollama'ya bağlanılamadı \\((.+)\\): (.+)", "Could not connect to Ollama ($1): $2"],
+  ["Ollama modeli bulunamadı: (.+) \\(ollama pull (.+)\\)", "Ollama model not found: $1 (ollama pull $2)"],
+);
+
+Object.assign(I18N_EN.phrases, { "Hesap yeniden erişilebilir": "Account reachable again", "Profil adı değişti": "Profile name changed" });
+I18N_EN.patterns.push(
+  ["(\\d+) kayıtlı bulgu ve (\\d+) araç bulgusu kaydedildi", "$1 saved findings and $2 tool findings recorded"],
+  ["HTTP (\\S+) — (\\d+) kontroldür açılmıyor \\(silinmiş, gizlenmiş ya da adı değişmiş olabilir\\)", "HTTP $1 — not opening for $2 checks (may be deleted, hidden or renamed)"],
+);

@@ -48,6 +48,11 @@
   }
   @media (max-width: 700px) { .page { padding: 28px 20px; margin: 12px; } .summary { grid-template-columns: repeat(2, 1fr); } }
 .foot .credit { display: inline-block; margin-top: 8px; }
+.ev { display: flex; gap: 12px; margin-top: 8px; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px; break-inside: avoid; }
+.ev-shot { width: 180px; max-height: 240px; object-fit: cover; object-position: top; border: 1px solid #ddd; }
+.hash { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; word-break: break-all; color: #555; }
+table.tl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.tl td { padding: 4px 8px 4px 0; border-bottom: 1px solid #eee; vertical-align: top; }
 </style>
 </head>
 <body>
@@ -83,10 +88,23 @@
       {% if it.detail %}<div class="t3">{{ it.detail }}</div>{% endif %}
       {% if it.meta %}<div class="meta">{% for k, v in it.meta.items() %}<b>{{ MK.get(k, k) }}:</b> {{ v }}{% if not loop.last %} · {% endif %}{% endfor %}</div>{% endif %}
       {% if it.note %}<div class="note">{{ L.note }}: {{ it.note }}</div>{% endif %}
+      {% for e in EV.get(it.id, []) %}<div class="ev">
+        {% if e.png_path %}<img class="ev-shot" src="/api/evidence/{{ e.id }}/png" alt="">{% endif %}
+        <div><b>{{ L.evidence }} #{{ e.id }}</b> · {{ e.captured_at }} {{ L.captured }}{% if e.http_status %} · HTTP {{ e.http_status }}{% endif %}
+          {% if e.png_sha256 %}<div class="hash">PNG SHA-256: {{ e.png_sha256 }}</div>{% endif %}
+          {% if e.html_sha256 %}<div class="hash">HTML SHA-256: {{ e.html_sha256 }}</div>{% endif %}
+          {% if e.manifest_sha256 %}<div class="hash">manifest SHA-256: {{ e.manifest_sha256 }}</div>{% endif %}</div>
+      </div>{% endfor %}
     </div>
   </div>
   {% endfor %}
   {% endfor %}
+
+  {% if TL %}
+  <h2>{{ L.timeline }}</h2>
+  <table class="tl">{% for e in TL %}<tr><td class="hash">{{ e.date[:4] if e.precision == "year" else e.date }}</td><td>{{ e.label }}</td><td>{{ e.title }}</td></tr>{% endfor %}</table>
+  {% endif %}
+  {% if EV %}<p class="sub">{{ L.ev_note }}</p>{% endif %}
 
   {% if not case["items"] %}<p class="sub">{{ L.empty }}</p>{% endif %}
 

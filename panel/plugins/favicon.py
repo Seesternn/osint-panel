@@ -57,7 +57,17 @@ def run(job, inp, emit):
                 icon_url = urljoin(page.url, href.group(1))
     except Exception:
         pass
-    r = s.get(icon_url, timeout=15)
+    r = None
+    for u in dict.fromkeys([icon_url, urljoin(target, "/favicon.ico")]):    # bağlantılı ikon olmazsa /favicon.ico
+        try:
+            r = s.get(u, timeout=15)
+        except Exception:
+            continue
+        if r.status_code == 200 and r.content:
+            icon_url = u
+            break
+    if r is None:
+        raise ToolError(L(job, "Site ikonuna ulaşılamadı.", "Could not reach the site icon."))
     if r.status_code != 200 or not r.content:
         raise ToolError(L(job, f"Site ikonu indirilemedi (HTTP {r.status_code}).", f"Could not download the site icon (HTTP {r.status_code})."))
     h = favicon_hash(r.content)

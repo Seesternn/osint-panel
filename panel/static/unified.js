@@ -170,7 +170,13 @@ $("#uForm").onsubmit = e => {
   if (!U.value && !U.file) return $("#uInput").focus();
   const chosen = plannedTools().filter(t => (t.key in uToolChoice ? uToolChoice[t.key] : t.def));
   if (!chosen.length) return toast("En az bir araç seçin");
-  U.tasks = chosen.map(t => ({ ...t, title: toolTitleU(t.id), status: "queued", results: [], raw: [], logs: [], error: null, job: null, t0: 0, elapsed: 0 }));
+  U.tasks = chosen.map(t => ({ ...t, depth: 0, title: toolTitleU(t.id), status: "queued", results: [], raw: [], logs: [], error: null, job: null, t0: 0, elapsed: 0 }));
+  U.pivot = $("#uPivot").checked;
+  U.pivotDepth = +$("#uPivotDepth").value || 1;
+  U.pivotMax = Math.max(1, Math.min(+$("#uPivotMax").value || 20, 100));
+  U.pivotCount = 0;
+  U.searched = new Set(U.tasks.map(t => `${t.type}:${String(t.val).toLowerCase()}`));
+  U.edges = [];                 // canlı grafik: [kaynak değer, hedef, etiket]
   U.selected = new Set();
   U.running = true;
   U.started = Date.now();
@@ -248,6 +254,7 @@ async function startTask(t) {
     t.status = "error"; t.error = err.message;
   }
   t.elapsed = (Date.now() - t.t0) / 1000;
+  if (t.status === "done") pivotFrom(t);
   renderUnified();
   pump();
 }
@@ -319,7 +326,7 @@ function renderProgress() {
     const st = { queued: "sırada", running: "çalışıyor", done: `${cnt} bulgu${errs ? ` · ${errs} yanıtsız` : ""} · ${t.elapsed.toFixed(0)} sn`, error: "hata", skipped: "atlandı" }[t.status];
     return `<div class="u-task s-${t.status}" title="${esc(t.error || "")}">
       ${t.status === "running" ? '<i class="spin"></i>' : t.status === "done" ? "✓" : t.status === "error" ? "!" : "·"}
-      <b>${esc(t.title)}</b>${t.extra ? `<em>${esc(t.val)}</em>` : ""}<span>${st}</span>
+      ${t.depth ? '<i class="pv">↳</i>' : ""}<b>${esc(t.title)}</b>${t.extra || t.depth ? `<em>${esc(t.val)}</em>` : ""}<span>${st}</span>
       ${t.status === "done" || t.status === "error" ? `<button type="button" class="text" data-uopen="${n}">aç</button>` : ""}</div>`;
   }).join("");
 }
@@ -335,7 +342,9 @@ function renderUnified() {
     c.classList.toggle("active", c.dataset.utab === U.tab);
   });
   const q = $("#uFilter").value.trim().toLowerCase();
-  if (U.tab === "merged") {
+  if (U.tab === "graph") {
+    renderUGraph(items);
+  } else if (U.tab === "merged") {
     const list = items.filter(x => !q || `${x.title} ${x.url} ${x.detail} ${x.tools.join(" ")}`.toLowerCase().includes(q));
     U.view = list;
     $("#uResults").innerHTML = list.length ? `<div class="rlist">${list.map((x, n) => `
@@ -441,3 +450,88 @@ document.querySelectorAll(".lang-switch [data-lang]").forEach(b => {
   b.classList.toggle("active", b.dataset.lang === LANG);
   b.onclick = () => { if (b.dataset.lang !== LANG) setLang(b.dataset.lang); };
 });
+
+
+/* ---------------- otomatik pivot ---------------- */
+const PIVOT_TOOLS = {
+  username: ["whatsmyname", "socialscan", "github", "fediverse", "gaming"],
+  email: ["holehe", "email-accounts", "email-verify"],
+  domain: ["whois", "crtsh", "site-intel", "favicon"],
+  phone: ["phonenumbers", "phone-search"],
+  ip: ["ipgeo", "shodan"],
+};
+const PIVOT_SKIP_DOMAINS = /(^|\.)(gmail|googlemail|outlook|hotmail|live|yahoo|icloud|proton(mail)?|yandex|mail|gmx|aol|github|gitlab|google|facebook|instagram|twitter|x|linkedin|youtube|tiktok|reddit|medium|wordpress|blogspot|t|telegram|bsky|mastodon|keybase|gravatar|wikipedia|wikidata)\.[a-z.]+$/i;
+
+function pivotFrom(t) {
+  if (!U.pivot || t.depth >= U.pivotDepth || typeof entitiesOf !== "function") return;
+  const hosts = new Set();
+  U.tasks.forEach(x => x.results.forEach(r => { try { hosts.add(new URL(r.url).hostname.replace(/^www\./, "")); } catch {} }));
+  for (const r of t.results) {
+    if (!(r.status === "found" || r.status === "maybe")) continue;
+    for (const e of entitiesOf(r, t.id === "sherlock" ? "sherlock" : t.id)) {
+      if (!PIVOT_TOOLS[e.type]) continue;
+      const v = String(e.value).trim();
+      const key = `${e.type}:${v.toLowerCase()}`;
+      if (U.searched.has(key)) continue;
+      if (e.type === "username" && (v.length < 3 || /^\d+$/.test(v))) continue;
+      if (e.type === "domain" && (hosts.has(v) || PIVOT_SKIP_DOMAINS.test(v))) continue;
+      const tools = PIVOT_TOOLS[e.type].filter(id => T.registry.some(x => x.id === id));
+      if (!tools.length || U.pivotCount + tools.length > U.pivotMax) return;
+      U.searched.add(key);
+      U.edges.push([`${t.type}:${String(t.val).toLowerCase()}`, key, r.url ? normUrl(r.url) : null]);
+      for (const id of tools) {
+        const spec = (U_MAP[e.type] || []).find(x => x[0] === id);
+        U.tasks.push({ key: `${id}|${v}`, id, fields: spec ? spec[1] : { [e.type]: "$" }, val: v, type: e.type, extra: true,
+                       depth: t.depth + 1, parent: t.val, title: toolTitleU(id), status: "queued", results: [], raw: [], logs: [],
+                       error: null, job: null, t0: 0, elapsed: 0 });
+        U.pivotCount++;
+      }
+    }
+  }
+}
+
+/* ---------------- canlı grafik ---------------- */
+let uNet = null, uGraphSig = "";
+const U_COLORS = { username: "#7b61ff", email: "#2b8a3e", domain: "#1971c2", phone: "#e8590c", ip: "#5c7cfa", name: "#c2255c",
+                   url: "#495057", crypto: "#f08c00", image: "#868e96" };
+function renderUGraph(items) {
+  if (typeof vis === "undefined") {
+    $("#uResults").innerHTML = '<div class="empty">Grafik kütüphanesi yüklenemedi (internet bağlantısı gerekir).</div>';
+    return;
+  }
+  if (!$("#uGraph")) $("#uResults").innerHTML = '<div id="uGraph" class="graph"></div><p class="note">Ortadaki düğüm aranan değer; renkli düğümler otomatik pivotla bulunan değerler. Bir düğüme çift tıklayınca bağlantısı açılır.</p>';
+  const nodes = new Map(), edges = [];
+  const valNode = (type, v) => {
+    const id = `${type}:${String(v).toLowerCase()}`;
+    if (!nodes.has(id)) nodes.set(id, { id, label: String(v).length > 34 ? String(v).slice(0, 32) + "…" : String(v), title: `${U_TYPES[type] || type}: ${v}`,
+      shape: "dot", size: id === [...U.searched][0] ? 26 : 16, color: U_COLORS[type] || "#868e96", font: { size: 13, strokeWidth: 3 } });
+    return id;
+  };
+  U.tasks.filter(t => t.depth === 0).forEach(t => valNode(t.type, t.val));
+  const shown = items.slice(0, 250);
+  const itemIds = new Set();
+  for (const x of shown) {
+    const id = "i:" + x.key;
+    itemIds.add(id);
+    nodes.set(id, { id, label: x.title.length > 26 ? x.title.slice(0, 24) + "…" : x.title, title: `${x.title}\n${x.url}\n${x.tools.join(", ")}`,
+                    url: x.url, shape: x.image ? "circularImage" : "dot", image: x.image || undefined, size: 10 + Math.min(x.tools.length, 5) * 2,
+                    color: x.tools.length > 1 ? "#212529" : "#adb5bd", font: { size: 11 } });
+    const srcs = new Set(x.refs.map(ref => `${ref.t.type}:${String(ref.t.val).toLowerCase()}`));
+    srcs.forEach(src => { const [ty, ...v] = src.split(":"); valNode(ty, v.join(":")); edges.push({ from: src, to: id, color: { color: "#ced4da" } }); });
+  }
+  for (const [from, to, viaItem] of U.edges || []) {
+    const [ty, ...v] = to.split(":");
+    valNode(ty, v.join(":"));
+    const src = viaItem && itemIds.has("i:" + viaItem) ? "i:" + viaItem : from;
+    edges.push({ from: src, to, dashes: true, color: { color: U_COLORS[ty] || "#868e96" }, width: 1.5 });
+  }
+  const sig = `${nodes.size}|${edges.length}`;
+  if (uNet && sig === uGraphSig && document.body.contains(uNet.body.container)) return;
+  uGraphSig = sig;
+  const data = { nodes: new vis.DataSet([...nodes.values()]), edges: new vis.DataSet(edges) };
+  if (uNet && document.body.contains(uNet.body.container)) { uNet.setData(data); return; }
+  uNet = new vis.Network($("#uGraph"), data, {
+    physics: { stabilization: { iterations: 120 }, barnesHut: { gravitationalConstant: -4000, springLength: 110 } },
+    interaction: { hover: true, tooltipDelay: 120 }, edges: { smooth: false }, nodes: { borderWidth: 1 } });
+  uNet.on("doubleClick", p => { const n = p.nodes[0] && data.nodes.get(p.nodes[0]); if (n?.url) window.open(n.url, "_blank", "noopener"); });
+}

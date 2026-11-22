@@ -1,4 +1,4 @@
-"""Sherlock Panel — Sherlock OSINT aracı için basit bir web arayüzü.
+"""OSINT Panel — tek arama kutusundan ~50 açık kaynak istihbarat aracı.
 
 Çalıştırma:  .venv/bin/python panel/app.py   →  http://127.0.0.1:5050
 """
@@ -34,7 +34,10 @@ tools.BY_ID.update({t['id']: t for t in tools2.REGISTRY2})
 tools.ABOUT.update(tools2.ABOUT2)
 
 import catalog
+import evidence
 import plugins
+import timeline
+import watch
 plugins.load_all(tools.REGISTRY, tools.BY_ID, tools.ABOUT)
 for _p in plugins.LOADED:
     for _s in _p.get("settings") or []:          # eklentinin Ayarlar sayfası alanları
@@ -344,29 +347,21 @@ REPORT_TEXT = {
     "tr": {"doc": "Rapor", "print_hint": "Tarayıcının yazdırma penceresinde hedef olarak “PDF olarak kaydet”i seçin.",
            "save_pdf": "PDF olarak kaydet", "label": "OSINT VAKA RAPORU", "created": "Oluşturma", "date": "Rapor tarihi",
            "findings": "bulgu", "found": "doğrulanmış / bulunan", "tools": "araç", "queries": "aranan değer", "notes": "Notlar",
-           "note": "Not", "empty": "Bu vakada henüz bulgu yok.", "unified": "Akıllı arama", "made_with": "OSINT Panel ile hazırlandı · Yazan: Seesternn",
+           "note": "Not", "empty": "Bu vakada henüz bulgu yok.", "evidence": "Kanıt", "captured": "arşivlendi (UTC)",
+           "timeline": "Zaman çizelgesi", "ev_note": "Kanıt dosyaları ve manifest.json panelin veri klasöründe saklanır; SHA-256 özetleri dosyaların sonradan değişmediğini doğrulamaya yarar.", "unified": "Akıllı arama", "made_with": "OSINT Panel ile hazırlandı · Yazan: Seesternn",
            "foot": "Bu rapor açık kaynaklardan otomatik araçlarla toplanan bilgileri içerir. Bulgular doğrulanmadan kesin kabul edilmemelidir. "
                    "Kişisel verilerin işlenmesinde 6698 sayılı KVKK hükümlerine uyulmalıdır."},
     "en": {"doc": "Report", "print_hint": "In the browser's print dialog, choose “Save as PDF” as the destination.",
            "save_pdf": "Save as PDF", "label": "OSINT CASE REPORT", "created": "Created", "date": "Report date",
            "findings": "findings", "found": "verified / found", "tools": "tools", "queries": "queried values", "notes": "Notes",
-           "note": "Note", "empty": "No findings in this case yet.", "unified": "Smart search", "made_with": "Made with OSINT Panel · by Seesternn",
+           "note": "Note", "empty": "No findings in this case yet.", "evidence": "Evidence", "captured": "captured (UTC)",
+           "timeline": "Timeline", "ev_note": "Evidence files and manifest.json are kept in the panel's data folder; the SHA-256 hashes let you verify the files were not modified later.", "unified": "Smart search", "made_with": "Made with OSINT Panel · by Seesternn",
            "foot": "This report contains information collected from open sources with automated tools. Findings should not be treated as "
                    "conclusive until verified. Processing of personal data must comply with applicable data-protection law (e.g. GDPR / KVKK)."},
 }
 REPORT_META_EN = {"Bulan araçlar": "Found by", "Kullanıcı adı": "Username", "Ad": "Name", "Ad Soyad": "Full name", "Konum": "Location",
                   "Şirket": "Company", "Kurum": "Organisation", "E-posta": "E-mail", "Telefon": "Phone", "Takipçi": "Followers",
                   "Biyografi": "Bio", "Web sitesi": "Website", "Hesap açılışı": "Account created", "Ülke": "Country", "Şehir": "City"}
-# Rapor başlıklarında araç adlarının İngilizcesi (arayüzdeki sözlükle aynı)
-REPORT_TITLES_EN = {
-    "namesearch": "Name research", "email-accounts": "E-mail account check", "email-verify": "E-mail verifier",
-    "phonenumbers": "Number parser", "phone-search": "Number-format search", "reverse-image": "Reverse image search",
-    "ipgeo": "IP lookup", "github": "GitHub profile extractor", "telegram": "Telegram check", "variants": "Username generator",
-    "hibp": "HIBP breach lookup", "email-header": "E-mail header analyzer", "geofusion": "Location finder",
-    "geolocate": "Photo geolocation (Claude)", "image-compare": "Photo matching", "ela": "Forgery analysis (ELA)",
-    "video": "Video analysis", "crtsh": "Certificate logs (crt.sh)", "dnstwist": "Lookalike domains (dnstwist)",
-    "site-intel": "Tracker analysis", "dorks": "Google dork generator", "doc-meta": "Document metadata", "websearch": "Web search",
-}
 
 
 @app.get("/case/<int:cid>/report")
@@ -382,9 +377,15 @@ def case_report(cid):
     titles = {t["id"]: t["title"] for t in tools.public_registry()}
     titles["unified"] = L["unified"]
     if lang == "en":
-        titles.update(REPORT_TITLES_EN)
+        from about_en import TITLES_EN
+        titles.update(TITLES_EN)
     fmt = "%Y-%m-%d" if lang == "en" else "%d.%m.%Y"
-    return render_template("report.html", case=c, groups=groups, titles=titles, L=L, lang=lang,
+    ev_by_item = {}
+    for e in store.list_evidence(cid):
+        if e["png_sha256"] or e["html_sha256"]:
+            ev_by_item.setdefault(e["item_id"], []).append(e)
+    tl = [e for e in timeline.build(c, store.list_evidence(cid), store.list_changes(cid)) if e["kind"] in ("finding", "change")]
+    return render_template("report.html", case=c, groups=groups, titles=titles, L=L, lang=lang, EV=ev_by_item, TL=tl,
                            MK=REPORT_META_EN if lang == "en" else {},
                            now=time.strftime(fmt + " %H:%M"),
                            created=time.strftime(fmt, time.localtime(c["created"] or 0)))
@@ -410,6 +411,171 @@ def run_tool_job(job, tool, inp):
         job["done"] = True
         q.put({"type": "done", "data": {"cancelled": job["cancel"].is_set(),
                                          "elapsed": round(time.time() - job["started"], 1)}})
+
+
+# ---------------------------------------------------------------- kanıt arşivi
+_ev_jobs = {}      # case_id -> {"total", "done", "errors"}
+
+
+@app.post("/api/items/<int:iid>/evidence")
+def api_item_evidence(iid):
+    it = store.get_item(iid)
+    if not it:
+        return jsonify(error="Bulgu bulunamadı"), 404
+    try:
+        rec = evidence.capture(it["case_id"], it)
+    except ValueError as e:
+        return jsonify(error=str(e)), 400
+    return jsonify(_ev_public(rec))
+
+
+@app.post("/api/cases/<int:cid>/evidence")
+def api_case_evidence(cid):
+    """Vakadaki arşivlenmemiş tüm bağlantıları arka planda arşivler."""
+    c = store.get_case(cid)
+    if not c:
+        return jsonify(error="Vaka bulunamadı"), 404
+    done_items = {e["item_id"] for e in store.list_evidence(cid) if not e["error"] or e["png_sha256"] or e["html_sha256"]}
+    todo = [i for i in c["items"] if i.get("url", "").startswith("http") and i["id"] not in done_items]
+    state = _ev_jobs.get(cid)
+    if state and state["done"] < state["total"]:
+        return jsonify(state)
+    state = _ev_jobs[cid] = {"total": len(todo), "done": 0, "errors": 0}
+
+    def work():
+        for it in todo:
+            try:
+                rec = evidence.capture(cid, it)
+                state["errors"] += bool(rec["error"] and not (rec["html_sha256"] or rec["png_sha256"]))
+            except Exception:
+                state["errors"] += 1
+            state["done"] += 1
+    threading.Thread(target=work, daemon=True).start()
+    return jsonify(state)
+
+
+def _ev_public(e):
+    return {k: e.get(k) for k in ("id", "item_id", "url", "final_url", "http_status", "captured_at", "html_sha256",
+                                  "png_sha256", "manifest_sha256", "error")} | {
+        "has_png": bool(e.get("png_path")), "has_html": bool(e.get("html_path"))}
+
+
+@app.get("/api/cases/<int:cid>/evidence")
+def api_case_evidence_list(cid):
+    return jsonify(items=[_ev_public(e) for e in store.list_evidence(cid)], job=_ev_jobs.get(cid),
+                   chrome=bool(evidence.chrome_path()))
+
+
+@app.get("/api/evidence/<int:eid>/<kind>")
+def api_evidence_file(eid, kind):
+    e = store.get_evidence(eid)
+    path = (e or {}).get({"png": "png_path", "html": "html_path", "manifest": "manifest_path"}.get(kind, ""), "")
+    if not path or not os.path.exists(path) or not os.path.realpath(path).startswith(os.path.realpath(evidence.ROOT)):
+        return "not found", 404
+    if kind == "png":
+        return send_file(path, mimetype="image/png")
+    # Arşivlenen HTML asla panelin içinde çalıştırılmaz: dosya olarak indirilir
+    return send_file(path, mimetype="text/plain" if kind == "html" else "application/json", as_attachment=True,
+                     download_name=f"evidence-{eid}-{os.path.basename(path)}")
+
+
+# ---------------------------------------------------------------- zaman çizelgesi ve izleme
+@app.get("/api/cases/<int:cid>/timeline")
+def api_case_timeline(cid):
+    c = store.get_case(cid)
+    if not c:
+        return jsonify(error="Vaka bulunamadı"), 404
+    return jsonify(events=timeline.build(c, store.list_evidence(cid), store.list_changes(cid)))
+
+
+@app.get("/api/cases/<int:cid>/watch")
+def api_watch_get(cid):
+    w = store.get_watch(cid) or {"case_id": cid, "enabled": 0, "interval_h": 24}
+    return jsonify(watch=w | {"running": watch.is_running(cid)}, changes=store.list_changes(cid, 300),
+                   queries=watch.queries_of(store.get_case(cid) or {}))
+
+
+@app.post("/api/cases/<int:cid>/watch")
+def api_watch_set(cid):
+    b = request.get_json(force=True)
+    interval = max(1.0, min(float(b.get("interval_h") or 24), 24 * 30))
+    return jsonify(watch=store.set_watch(cid, bool(b.get("enabled")), interval))
+
+
+@app.post("/api/cases/<int:cid>/watch/run")
+def api_watch_run(cid):
+    if watch.is_running(cid):
+        return jsonify(running=True)
+    lang = "en" if request.args.get("lang") == "en" else "tr"
+    threading.Thread(target=watch.run_case, args=(cid, lang), daemon=True).start()
+    return jsonify(running=True)
+
+
+@app.post("/api/cases/<int:cid>/changes/seen")
+def api_changes_seen(cid):
+    store.mark_changes_seen(cid)
+    return jsonify(ok=True)
+
+
+@app.get("/api/watch/unseen")
+def api_watch_unseen():
+    return jsonify(store.unseen_changes())
+
+
+# ---------------------------------------------------------------- REST: paneli açmadan akıllı arama
+_batches = {}
+
+
+@app.post("/api/v1/search")
+def api_v1_search():
+    """Akıllı aramayı sunucuda çalıştırır. Gövde: {"value": "...", "type"?, "tools"?: [...], "all"?: bool, "lang"?: "en"|"tr",
+    "wait"?: saniye}. wait verilirse o kadar bekleyip sonucu döndürür; yoksa {id} döner, sonuç GET /api/v1/search/<id> ile alınır."""
+    import merge
+    import runner
+    b = request.get_json(force=True) or {}
+    value = str(b.get("value") or "").strip()
+    if not value:
+        return jsonify(error="value is required"), 400
+    typ, plan = runner.plan(value, b.get("type"), b.get("tools") or None, bool(b.get("all")))
+    if not plan:
+        return jsonify(error=f"no tools for type {typ}"), 400
+    lang = "en" if b.get("lang") == "en" else "tr"
+    names = {t["id"]: t["title"] for t in tools.public_registry(lang)}
+    bid = uuid.uuid4().hex[:12]
+    st = _batches[bid] = {"id": bid, "value": value, "type": typ, "status": "running", "started": time.time(),
+                          "tools": {t: {"status": "running"} for t, _ in plan}, "raw": {}}
+
+    def progress(tid, rows, err):
+        st["tools"][tid] = {"status": "error" if err else "done", "error": err,
+                            "found": sum(1 for r in rows if r.get("status") in ("found", "maybe"))}
+        st["raw"][names.get(tid, tid)] = rows
+
+    def work():
+        runner.run_many(plan, lang=lang, budget_s=int(b.get("budget") or 900), on_result=progress)
+        st["status"], st["elapsed"] = "done", round(time.time() - st["started"], 1)
+    th = threading.Thread(target=work, daemon=True)
+    th.start()
+    if b.get("wait"):
+        th.join(timeout=min(float(b["wait"]), 900))
+    return _batch_view(st, merge)
+
+
+@app.get("/api/v1/search/<bid>")
+def api_v1_search_get(bid):
+    import merge
+    st = _batches.get(bid)
+    return _batch_view(st, merge) if st else (jsonify(error="not found"), 404)
+
+
+def _batch_view(st, merge):
+    items, info = merge.merge(dict(st["raw"]), st["type"])
+    return jsonify({k: v for k, v in st.items() if k != "raw"} | {"results": items, "info": info})
+
+
+@app.get("/api/v1/tools")
+def api_v1_tools():
+    return jsonify([{"id": t["id"], "title": t["title"], "group": t["group"],
+                     "fields": [{"name": f["name"], "required": bool(f.get("required"))} for f in t["fields"]]} for t in tools.REGISTRY])
 
 
 @app.get("/api/catalog")
@@ -633,7 +799,43 @@ def export_generic(job, rows, fmt):
     return send_file(buf, mimetype=mime, as_attachment=True, download_name=f"{name}.{fmt}")
 
 
-if __name__ == "__main__":
+# ---------------------------------------------------------------- erişim anahtarı (isteğe bağlı)
+PANEL_TOKEN = os.environ.get("PANEL_TOKEN", "").strip()
+
+
+@app.before_request
+def _require_token():
+    """PANEL_TOKEN ayarlıysa (ör. Docker'da ağa açıldığında) her istek anahtar ister: ?token=, X-Panel-Token başlığı ya da çerez."""
+    if not PANEL_TOKEN or request.path == "/healthz":
+        return None
+    import hmac
+    given = request.args.get("token") or request.headers.get("X-Panel-Token") or request.cookies.get("panel_token") or ""
+    if hmac.compare_digest(given, PANEL_TOKEN):
+        return None
+    return Response("401 — PANEL_TOKEN required (open /?token=…)", status=401, mimetype="text/plain")
+
+
+@app.after_request
+def _token_cookie(resp):
+    if PANEL_TOKEN and request.args.get("token") == PANEL_TOKEN:
+        resp.set_cookie("panel_token", PANEL_TOKEN, httponly=True, samesite="Strict")
+    return resp
+
+
+@app.get("/healthz")
+def healthz():
+    return jsonify(ok=True, tools=len(tools.REGISTRY) + 1, plugins=len(plugins.LOADED))
+
+
+def main():
+    host = os.environ.get("PANEL_HOST", "127.0.0.1")
     port = int(os.environ.get("PORT", 5050))
-    print(f"Sherlock Panel → http://127.0.0.1:{port}")
-    app.run(host="127.0.0.1", port=port, threaded=True, debug=False)
+    if host not in ("127.0.0.1", "localhost", "::1") and not PANEL_TOKEN:
+        print("UYARI / WARNING: panel is reachable from the network without PANEL_TOKEN.")
+    watch.start_scheduler()
+    print(f"OSINT Panel → http://{'127.0.0.1' if host in ('0.0.0.0', '::') else host}:{port}")
+    app.run(host=host, port=port, threaded=True, debug=False)
+
+
+if __name__ == "__main__":
+    main()

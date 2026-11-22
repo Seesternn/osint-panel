@@ -1214,10 +1214,10 @@ ABOUT = {
 
 
 def public_registry(lang="tr"):
-    about = ABOUT
+    about, titles = ABOUT, {}
     if lang == "en":
-        from about_en import ABOUT_EN
-        about = {**ABOUT, **ABOUT_EN}
+        from about_en import ABOUT_EN, TITLES_EN
+        about, titles = {**ABOUT, **ABOUT_EN}, TITLES_EN
     cats = sorted({s.get("cat", "") for s in load_wmn()["sites"] if s.get("cat")})
     out = [{"id": "sherlock", "group": "Kullanıcı adı", "title": "Sherlock", "icon": "fingerprint",
             "desc": "400+ sosyal ağda kullanıcı adı arar.", "fields": [], "about": about["sherlock"]}]
@@ -1229,6 +1229,8 @@ def public_registry(lang="tr"):
                 f["options"] = [["", "Tümü"]] + [[c, c] for c in cats]
             fields.append(f)
         entry = {k: v for k, v in t.items() if not callable(v) and k not in ("en",)} | {"fields": fields, "about": about.get(t["id"], {})}
+        if t["id"] in titles:
+            entry["title"] = titles[t["id"]]
         en = t.get("en") if lang == "en" else None
         if en:   # eklentilerin İngilizce katmanı / plugin English overlay
             entry.update({k: en[k] for k in ("title", "desc", "note") if en.get(k)})
