@@ -17,6 +17,7 @@ services:
       - "127.0.0.1:5050:5050"
     environment:
       PANEL_TOKEN: "${PANEL_TOKEN:-}"         # optional access key: open http://host:5050/?token=<key> once
+      PANEL_ALLOWED_HOSTS: "${PANEL_ALLOWED_HOSTS:-}"   # other host names you use to open the panel (without a token)
       TZ: "${TZ:-Europe/Istanbul}"
     volumes:
       - osint-data:/data                      # settings, API keys, cases, evidence, user plugins

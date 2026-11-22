@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.1 — 2026-11-22
+
+### Security
+- Block DNS rebinding (Host allow-list) and cross-site requests (CSRF) to the local panel.
+
+### Changed
+- README screenshots no longer show third-party accounts' photos, names or bios.
+- Dependency minimums raised; GitHub Actions updated.
+
 ## 1.0.0 — 2026-11-22
 
 First public release.

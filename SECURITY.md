@@ -12,6 +12,9 @@ Include the version / commit, how to reproduce, and the impact. You'll get an an
   Docker setup publishes the port on `127.0.0.1` only.
 - If you expose it on a network, set `PANEL_TOKEN`: every request then needs the token
   (`?token=` once in the browser, or the `X-Panel-Token` header for the API).
+- Other websites cannot drive the panel through your browser: requests whose `Host` is not localhost are
+  refused (DNS-rebinding protection; extend with `PANEL_ALLOWED_HOSTS` or use `PANEL_TOKEN`), and
+  state-changing requests coming from another site (`Sec-Fetch-Site` / `Origin`) are rejected (CSRF protection).
 - API keys and case data are stored locally in the data folder (`settings.json`, `cases.db`, `evidence/`),
   never sent anywhere except to the service each key belongs to, and are excluded from git and Docker builds.
 - Evidence capture refuses local / private network addresses, and archived HTML is only offered as a

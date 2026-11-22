@@ -127,6 +127,7 @@ listed at `/api/catalog`.
 | `OSINT_DATA_DIR` | `panel/` (Docker: `/data`) | settings, cases, evidence, user plugins |
 | `PANEL_HOST` / `PORT` | `127.0.0.1` / `5050` | listen address |
 | `PANEL_TOKEN` | – | access key required for every request when set |
+| `PANEL_ALLOWED_HOSTS` | – | extra host names allowed without a token (comma-separated); localhost is always allowed |
 | `OSINT_PLUGIN_DIR` | `<data dir>/plugins_user` | user plugin folder |
 | `CHROME_PATH` | auto-detected | browser used for evidence screenshots |
 | `TESSERACT_LANGS` | `eng+tur` | OCR languages on Linux |

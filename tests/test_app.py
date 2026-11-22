@@ -75,3 +75,26 @@ def test_broken_user_plugin_is_reported(tmp_path, monkeypatch):
     rows = []
     by_id["good-one"]["run"]({}, {}, lambda **r: rows.append(r))
     assert rows == [{"title": "ok", "status": "found"}]
+
+
+def test_cross_site_requests_are_blocked(client):
+    # Başka bir sitenin text/plain "basit istek"i (CORS ön kontrolü olmadan gelir) ayarları değiştirememeli
+    evil = {"Origin": "https://evil.example", "Content-Type": "text/plain"}
+    assert client.post("/api/settings", data='{"ollama_url":"https://evil.example"}', headers=evil).status_code == 403
+    assert client.post("/api/cases", data='{"name":"x"}', headers={"Sec-Fetch-Site": "cross-site"}).status_code == 403
+    assert client.post("/api/cases", json={"name": "x"}, headers={"Origin": "null"}).status_code == 403
+    # Aynı köken (panelin kendi arayüzü) ve Origin göndermeyen istemciler (curl, CLI) çalışır
+    ok = client.post("/api/cases", json={"name": "same-origin"}, headers={"Origin": "http://localhost", "Sec-Fetch-Site": "same-origin"})
+    assert ok.status_code == 200
+    assert client.delete(f"/api/cases/{ok.get_json()['id']}").status_code == 200
+
+
+def test_dns_rebinding_host_is_blocked(client, monkeypatch):
+    assert client.get("/api/settings", headers={"Host": "attacker.example:5050"}).status_code == 403
+    assert client.get("/api/settings", headers={"Host": "127.0.0.1:5050"}).status_code == 200
+    assert client.get("/api/settings", headers={"Host": "[::1]:5050"}).status_code == 200
+    assert client.get("/healthz", headers={"Host": "attacker.example"}).status_code == 200
+    import app
+    monkeypatch.setattr(app, "PANEL_TOKEN", "t0k")      # anahtar varsa ağ adı serbest, anahtar korur
+    assert client.get("/api/settings", headers={"Host": "panel.lan:5050", "X-Panel-Token": "t0k"}).status_code == 200
+    assert client.get("/api/settings", headers={"Host": "panel.lan:5050"}).status_code == 401

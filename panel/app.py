@@ -803,6 +803,42 @@ def export_generic(job, rows, fmt):
 PANEL_TOKEN = os.environ.get("PANEL_TOKEN", "").strip()
 
 
+LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
+ALLOWED_HOSTS = LOCAL_HOSTS | {h.strip().lower() for h in os.environ.get("PANEL_ALLOWED_HOSTS", "").split(",") if h.strip()}
+SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+
+
+def _hostname(hostport):
+    h = (hostport or "").strip().lower()
+    if h.startswith("["):                       # [::1]:5050
+        return h[1:h.find("]")] if "]" in h else h
+    return h.rsplit(":", 1)[0] if h.count(":") == 1 else h
+
+
+@app.before_request
+def _block_cross_site():
+    """Başka sitelerin tarayıcı üzerinden panele istek atmasını engeller.
+    * DNS rebinding: Host yalnızca localhost (ya da PANEL_ALLOWED_HOSTS) olabilir; PANEL_TOKEN varsa anahtar korur.
+    * CSRF: durum değiştiren istekler başka bir siteden geliyorsa (Sec-Fetch-Site / Origin) reddedilir."""
+    if request.path == "/healthz":
+        return None
+    if not PANEL_TOKEN and _hostname(request.host) not in ALLOWED_HOSTS:
+        return Response("403 — host not allowed (set PANEL_ALLOWED_HOSTS or PANEL_TOKEN)", status=403, mimetype="text/plain")
+    if request.method in SAFE_METHODS:
+        return None
+    site = request.headers.get("Sec-Fetch-Site", "")
+    if site in ("cross-site", "same-site"):
+        return Response("403 — cross-site request blocked", status=403, mimetype="text/plain")
+    origin = request.headers.get("Origin")
+    if origin and origin != "null":
+        from urllib.parse import urlparse as _up
+        if _up(origin).netloc.lower() != request.host.lower():
+            return Response("403 — cross-origin request blocked", status=403, mimetype="text/plain")
+    elif origin == "null":
+        return Response("403 — cross-origin request blocked", status=403, mimetype="text/plain")
+    return None
+
+
 @app.before_request
 def _require_token():
     """PANEL_TOKEN ayarlıysa (ör. Docker'da ağa açıldığında) her istek anahtar ister: ?token=, X-Panel-Token başlığı ya da çerez."""
