@@ -427,3 +427,9 @@ function openTaskDetail(t) {
 
 renderTypeBar();
 $(".start-grid")?.addEventListener("click", e => { const el = e.target.closest("[data-tool]"); if (el) selectTool(el.dataset.tool); });
+
+/* Dil düğmeleri / language switch */
+document.querySelectorAll(".lang-switch [data-lang]").forEach(b => {
+  b.classList.toggle("active", b.dataset.lang === LANG);
+  b.onclick = () => { if (b.dataset.lang !== LANG) setLang(b.dataset.lang); };
+});

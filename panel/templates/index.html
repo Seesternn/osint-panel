@@ -11,6 +11,8 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='features.css') }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script>try { if (localStorage.getItem("nav-collapsed") === "1") document.documentElement.classList.add("nav-collapsed"); } catch {}</script>
+<script src="{{ url_for('static', filename='i18n_en.js') }}"></script>
+<script src="{{ url_for('static', filename='i18n.js') }}"></script>
 </head>
 <body>
 
@@ -27,6 +29,12 @@
   </button>
   <div class="nav-search"><input id="navFilter" type="search" placeholder="Araç ara"></div>
   <nav id="navList" class="nav-list"></nav>
+  <div class="nav-foot">
+    <div class="lang-switch" role="group" aria-label="Dil" data-noi18n>
+      <button type="button" data-lang="tr">TR</button><button type="button" data-lang="en">EN</button>
+    </div>
+    <a class="credit" href="https://github.com/Seesternn" target="_blank" rel="noopener noreferrer"><small>Yazan</small> Seesternn</a>
+  </div>
 </aside>
 <button type="button" id="navOpen" class="nav-open" aria-label="Araçları aç">
   <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
