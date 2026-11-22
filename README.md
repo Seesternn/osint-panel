@@ -7,7 +7,7 @@ you can select from, archive as evidence and keep watching.
 
 Runs entirely on your own computer. Turkish and English interface.
 
-[![CI](../../actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
+[![CI](https://github.com/Seesternn/osint-panel/actions/workflows/ci.yml/badge.svg)](https://github.com/Seesternn/osint-panel/actions/workflows/ci.yml)
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
 ![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
 
@@ -142,6 +142,14 @@ identity / address lookup panels or face recognition, and it never logs into acc
 Use it for your own footprint, authorised investigations, journalism and research, respect each source's
 terms, and follow the law where you live (e.g. GDPR / KVKK). Findings are leads, not proof — verify them.
 
+## Disclaimer
+
+This software is provided for lawful research, journalism, security work and personal-footprint checks.
+You are solely responsible for how you use it and for complying with the laws that apply to you and with
+the terms of the services you query. The author accepts no liability for misuse. Results can be wrong or
+belong to someone else with the same name or username — never act on them without independent verification.
+See also the [MIT license](LICENSE) (no warranty).
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Security issues: [SECURITY.md](SECURITY.md). Changes: [CHANGELOG.md](CHANGELOG.md).
@@ -178,6 +186,10 @@ docker compose up -d --build
 
 Ya da Docker'sız: `./setup.sh` → `./run_panel.sh`. Adres: http://127.0.0.1:5050. Arayüz dili sol alttaki
 TR / EN düğmesiyle değişir. API anahtarları **Ayarlar** sayfasından girilir ve yalnızca bu bilgisayarda saklanır.
+
+**Sorumluluk reddi:** Yazılım yalnızca yasal araştırma, gazetecilik, güvenlik çalışmaları ve kişinin kendi dijital
+izini incelemesi içindir. Kullanımdan ve ilgili yasalara / hizmet koşullarına uyulmasından kullanıcı sorumludur;
+yazar kötüye kullanımdan sorumlu tutulamaz.
 
 **Sorumlu kullanım:** Sızdırılmış veriler, kimlik / adres sorgu panelleri ve yüz tanıma bilinçli olarak yoktur.
 Yalnızca kamuya açık kaynaklar kullanılır; KVKK ve ilgili mevzuata uyun. Bulgular ipucudur, kanıt değil —

@@ -36,7 +36,8 @@ COPY . .
 
 # Python tools (each in its own virtual environment, exactly like a local install)
 RUN --mount=type=cache,target=/tmp/uv-cache \
-    if [ "$WITH_GEOCLIP" = "1" ]; then ./setup.sh; else ./setup.sh --no-geoclip; fi \
+    export SKIP_SYSTEM_CHECK=1 \
+ && if [ "$WITH_GEOCLIP" = "1" ]; then ./setup.sh; else ./setup.sh --no-geoclip; fi \
  && rm -f tools/searxng/settings.yml \
  && find /app -name "__pycache__" -type d -prune -exec rm -rf {} + \
  && rm -rf /app/sherlock/.git /app/tools/*/.git /app/tools/searxng/src/.git

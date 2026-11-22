@@ -116,6 +116,8 @@ curl -fsSL https://raw.githubusercontent.com/WebBreacher/WhatsMyName/main/wmn-da
 curl -fsSL https://raw.githubusercontent.com/disposable-email-domains/disposable-email-domains/main/disposable_email_blocklist.conf \
   -o tools/disposable_domains.txt || warn "disposable_domains.txt indirilemedi / not downloaded"
 
+if [ "${SKIP_SYSTEM_CHECK:-0}" = 1 ]; then say "Hazır / done"; exit 0; fi   # Docker: sistem araçları çalışma aşamasında kurulur
+
 say "Sistem araçları / system tools"
 missing=()
 for b in exiftool phoneinfoga subfinder httpx ffmpeg; do command -v "$b" >/dev/null || missing+=("$b"); done

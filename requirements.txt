@@ -1,13 +1,13 @@
 # Panelin kendi ortamı (.venv). Sherlock, setup.sh tarafından ayrıca kurulur.
-flask>=3.0
+flask>=3.1.3
 requests>=2.31
 requests-futures>=1.0
 python-whois>=0.9
-dnspython>=2.6
+dnspython>=2.9.2
 phonenumbers>=8.13
-pillow>=10.0
+pillow>=13.0.0
 ImageHash>=4.3
 numpy
 openpyxl
 pandas
-anthropic>=0.40
+anthropic>=2.10.0

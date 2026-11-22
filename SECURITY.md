@@ -3,7 +3,7 @@
 ## Reporting a vulnerability
 
 Please **do not open a public issue** for security problems. Use GitHub's
-[private vulnerability reporting](../../security/advisories/new) for this repository instead.
+[private vulnerability reporting](https://github.com/Seesternn/osint-panel/security/advisories/new) for this repository instead.
 Include the version / commit, how to reproduce, and the impact. You'll get an answer as soon as possible.
 
 ## Security model
