@@ -21,7 +21,10 @@ const I18N = (() => {
   if (LANG !== "en" || typeof I18N_EN === "undefined") return { t: s => s, run() {} };
   const norm = s => s.replace(/\s+/g, " ").trim();
   const dict = new Map(Object.entries(I18N_EN.phrases).map(([k, v]) => [norm(k), v]));
-  const patterns = I18N_EN.patterns.map(([re, fn]) => [new RegExp("^" + re + "$", "u"), fn]);
+  // "a · b" bölücüsü en sona: önce "·" içeren özel kalıplar denensin
+  const SPLIT = "(.+?) · (.+)";
+  const patterns = [...I18N_EN.patterns.filter(p => p[0] !== SPLIT), ...I18N_EN.patterns.filter(p => p[0] === SPLIT)]
+    .map(([re, fn]) => [new RegExp("^" + re + "$", "u"), fn]);
   // Cümle içindeki bilinen ifadeler (en uzun önce). Yalnızca 4+ harfli anahtarlar; harf sınırına dikkat edilir.
   const keys = [...dict.keys()].filter(k => k.length >= 4 && !/^[\w.@:/-]+$/.test(k) || /[çğıöşüÇĞİÖŞÜ]/.test(k) && k.length >= 3)
     .sort((a, b) => b.length - a.length);
