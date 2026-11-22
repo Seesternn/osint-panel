@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OSINT Panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='shell.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='features.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script>try { if (localStorage.getItem("nav-collapsed") === "1") document.documentElement.classList.add("nav-collapsed"); } catch {}</script>
+</head>
+<body>
+
+<aside id="nav" class="nav" aria-label="Araçlar">
+  <div class="nav-top">
+    <button type="button" id="navToggle" class="nav-toggle" aria-label="Paneli daralt / genişlet" title="Paneli daralt / genişlet">
+      <svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15"/></svg>
+    </button>
+    <span class="nav-title">Araçlar</span>
+  </div>
+  <button type="button" id="caseChip" class="case-chip" title="Aktif vaka">
+    <svg viewBox="0 0 24 24"><path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></svg>
+    <span><small>Aktif vaka</small><b id="caseChipName">Seçilmedi</b></span>
+  </button>
+  <div class="nav-search"><input id="navFilter" type="search" placeholder="Araç ara"></div>
+  <nav id="navList" class="nav-list"></nav>
+</aside>
+<button type="button" id="navOpen" class="nav-open" aria-label="Araçları aç">
+  <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+</button>
+<div id="navScrim" class="nav-scrim" hidden></div>
+
+<main class="app">
+
+<!-- ============ AKILLI ARAMA (tek giriş, tüm araçlar) ============ -->
+<section id="view-unified" class="view" hidden>
+<div class="wrap">
+  <header class="tool-head">
+    <h1>Akıllı arama</h1>
+    <p>Bir kez yaz: kullanıcı adı, e-posta, telefon, ad soyad, alan adı, IP, bağlantı ya da görsel. Türünü kendisi anlar, o veriyi kabul eden bütün araçları birlikte çalıştırır ve sonuçları tek raporda birleştirir.</p>
+  </header>
+  <form id="uForm" class="search" autocomplete="off">
+    <input id="uInput" type="text" spellcheck="false" placeholder="kullanıcı adı, e-posta, telefon, ad soyad, alan adı…" autofocus>
+    <button type="submit" id="uRun">Ara</button>
+    <button type="button" id="uStop" disabled>Durdur</button>
+  </form>
+  <div class="u-type">
+    <span class="muted">Algılanan tür:</span>
+    <div id="uTypes" class="u-chips"></div>
+    <label class="text file-btn">veya görsel yükle<input id="uFile" type="file" accept="image/*,.heic,.heif" hidden></label>
+    <span id="uFileName" class="muted"></span>
+  </div>
+  <div id="uExtra" class="u-extra"></div>
+  <details class="opts u-tools" id="uToolsBox">
+    <summary>Çalışacak araçlar <span id="uToolCount" class="muted"></span></summary>
+    <div id="uToolList" class="u-tool-list"></div>
+  </details>
+
+  <div class="meter" id="uMeter"><div id="uBar"></div></div>
+  <div class="summary">
+    <span><b id="uFound">0</b> farklı bulgu</span>
+    <span><b id="uMulti">0</b> birden çok araçta</span>
+    <span><b id="uDone">0</b>/<span id="uTotal">0</span> araç bitti</span>
+    <span class="clock" id="uClock"><i class="spin" aria-hidden="true"></i><span id="uTime">0:00</span></span>
+  </div>
+  <div id="uStatus" class="status-line"></div>
+
+  <div id="uProgress" class="u-progress"></div>
+
+  <div class="bar-row" id="uBarRow" hidden>
+    <nav class="tabs" id="uTabs">
+      <button class="chip active" data-utab="merged">Birleşik sonuçlar</button>
+      <button class="chip" data-utab="info">Bilgiler ve bağlantılar</button>
+    </nav>
+    <div class="filters"><input id="uFilter" type="search" placeholder="Sonuçlarda ara"></div>
+  </div>
+  <div id="uSelBar" class="u-selbar" hidden>
+    <label class="check small"><input type="checkbox" id="uSelAll"> Tümünü seç</label>
+    <span id="uSelCount" class="muted">0 seçili</span>
+    <span class="sep"></span>
+    <button type="button" class="text" id="uSelCopy">Bağlantıları kopyala</button>
+    <button type="button" class="text strong" id="uSelSave">Seçilenleri vakaya kaydet</button>
+  </div>
+  <section id="uResults" class="results"></section>
+</div>
+</section>
+
+<!-- ============ REHBER ============ -->
+<section id="view-guide" class="view" hidden>
+<div class="wrap">
+  <header class="tool-head">
+    <h1>Rehber</h1>
+    <p>Paneldeki araçların ne işe yaradığı ve elindeki bilgiye göre hangisiyle başlaman gerektiği.</p>
+  </header>
+
+  <h2 class="guide-h">Elimde ne var?</h2>
+  <div class="start-grid">
+    <div class="start" data-tool="unified"><b>Ne olduğundan emin değilim / hepsini birden</b><span>Akıllı arama ile başla: kullanıcı adı, e-posta, telefon, ad soyad, alan adı, IP, bağlantı ya da görseli tek kutuya yaz. Türünü kendisi anlar, o veriyi kabul eden bütün araçları birlikte çalıştırır, aynı hesabı bulan araçları tek satırda birleştirir; beğendiğin sonuçları seçip vakaya kaydedersin.</span></div>
+    <div class="start"><b>Yalnızca ad soyad</b><span>İsim araştırma ile başla: tanınmış kişi kaydı, haberler, akademik kayıtlar, GitHub, yaptırım listeleri ve olası kullanıcı adları tek seferde gelir. Bulunan kullanıcı adlarını → ile Sherlock'a gönder.</span></div>
+    <div class="start"><b>Kullanıcı adı</b><span>Sherlock ile başla, Maigret ve user-scanner ile ayrıntı al, WhatsMyName ve Nexfil ile çapraz kontrol et. GitHub profil çıkarıcı commit'lerdeki gerçek e-postayı, Reddit / HN / Keybase saat dilimini verir.</span></div>
+    <div class="start"><b>E-posta</b><span>E-posta doğrulayıcı ile adresin geçerli olduğundan emin ol. Holehe ve E-posta hesap kontrolü ile bağlı hesapları (Gravatar fotoğrafı, Microsoft), HIBP ve h8mail ile sızıntıları bul. Gmail ise GHunt. Şüpheli bir e-posta için başlık çözümleyici.</span></div>
+    <div class="start"><b>Telefon</b><span>Numara çözümleyici ile hat tipini ve operatörü öğren, Ignorant ile kayıtlı hesaplara bak, Numara varyasyon araması ile tüm yazım biçimlerini arat.</span></div>
+    <div class="start"><b>Fotoğraf / video</b><span>ExifTool ile gizli bilgileri oku; EXIF yoksa Görsel konum tahmini. Ters görsel arama ile başka nerelerde kullanıldığını, Fotoğraf eşleştirme ile profil fotoğraflarının aynı olup olmadığını, ELA ile üzerinde oynanıp oynanmadığını bul. Videolar için Video analizi.</span></div>
+    <div class="start"><b>Web sitesi / alan adı</b><span>WHOIS / DNS ile sahibine bak. Site izleyici analizi aynı Analytics / AdSense kimliğini kullanan siteleri bulur. crt.sh ve subfinder alt alan adlarını, Wayback silinmiş sayfaları, Belge meta verisi çalışan adlarını verir. Geniş tarama için SpiderFoot.</span></div>
+    <div class="start"><b>IP adresi</b><span>IP konum sorgusu ile yaklaşık konum ve servis sağlayıcıyı, Shodan ile açık portları ve hizmetleri gör.</span></div>
+    <div class="start"><b>Bulguları toplamak</b><span>Her sonuçtaki → düğmesiyle bulunan e-posta, telefon, alan adı ya da kullanıcı adını başka bir araca gönder; + ile Vakaya ekle. Vakalar sayfasında bağlantı grafiği ve PDF rapor var.</span></div>
+  </div>
+
+  <h2 class="guide-h">Tüm araçlar</h2>
+  <div id="guideList" class="guide-list"></div>
+</div>
+</section>
+
+<!-- ============ SHERLOCK ============ -->
+<section id="view-sherlock" class="view">
+<div class="wrap">
+  <header class="tool-head">
+    <h1>Sherlock</h1>
+    <p>400+ sosyal ağda kullanıcı adı arar; bulunan her profil arka planda açılıp doğrulanır.</p>
+    <details class="about" id="aboutSherlock"><summary>Bu araç ne işe yarar?</summary><div class="about-body"></div></details>
+  </header>
+
+  <form id="searchForm" class="search">
+    <input id="usernames" type="text" autocomplete="off" spellcheck="false" placeholder="kullanıcı adı" autofocus>
+    <button type="button" id="addBtn" class="icon" title="Listeye ekle (Enter)" aria-label="Listeye ekle">+</button>
+    <button type="submit" id="startBtn">Ara</button>
+    <button type="button" id="stopBtn" disabled>Durdur</button>
+  </form>
+  <div class="names">
+    <div id="tagList" class="tag-list"></div>
+    <div class="names-actions">
+      <label class="text file-btn">.txt yükle<input id="fileInput" type="file" accept=".txt,.csv,text/plain" hidden></label>
+      <button type="button" class="text" id="clearTags" hidden>Listeyi temizle</button>
+    </div>
+  </div>
+
+  <details class="opts">
+    <summary>Ayarlar</summary>
+    <div class="opts-body">
+      <div class="col">
+        <div class="field">
+          <span class="lbl">Siteler <span id="siteCount" class="muted"></span></span>
+          <input id="siteFilter" type="search" placeholder="Filtrele">
+          <div id="siteList" class="site-list"><div class="muted pad">Yükleniyor…</div></div>
+          <div class="site-actions">
+            <button type="button" class="text" id="selAll">Görünenleri seç</button>
+            <button type="button" class="text" id="selNone">Temizle</button>
+            <span id="selCount" class="muted"></span>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <label class="check"><input type="checkbox" id="nsfw"> NSFW siteleri dahil et</label>
+        <label class="check"><input type="checkbox" id="ignoreExcl"> Hariç tutulan siteleri de tara</label>
+        <label class="field"><span class="lbl">Zaman aşımı (sn)</span>
+          <input id="timeout" type="number" min="1" max="300" value="30"></label>
+        <label class="field"><span class="lbl">Veri kaynağı</span>
+          <select id="source">
+            <option value="remote">Güncel liste (GitHub)</option>
+            <option value="local">Yerel data.json</option>
+            <option value="custom">Özel JSON / PR</option>
+          </select></label>
+        <label class="field" id="customJsonWrap" hidden><span class="lbl">JSON URL, dosya yolu veya PR no</span>
+          <input id="customJson" type="text"></label>
+        <label class="field"><span class="lbl">Proxy</span>
+          <input id="proxy" type="text" placeholder="socks5://127.0.0.1:1080"></label>
+        <p class="note">Adı yazıp Enter veya + ile listeye ekleyin; .txt dosyasında her satıra bir ad. <code>{?}</code> yazılan yer <code>_ - .</code> ile denenir.</p>
+      </div>
+    </div>
+  </details>
+
+  <div class="meter" id="sMeter"><div id="bar"></div></div>
+  <div class="summary">
+    <span><b id="stFound">0</b> bulundu</span>
+    <span><b id="stAvail">0</b> yok</span>
+    <span><b id="stErr">0</b> hata</span>
+    <span class="clock" id="sClock"><i class="spin" aria-hidden="true"></i><span class="clock-count"><span id="stDone">0</span>/<span id="stTotal">0</span></span><span id="stTime">0:00</span></span>
+  </div>
+  <div id="statusLine" class="status-line"></div>
+
+  <div class="bar-row">
+    <nav class="tabs" id="statusChips">
+      <button class="chip active" data-status="Claimed">Bulundu</button>
+      <button class="chip" data-status="Unverified">Açılmadı</button>
+      <button class="chip" data-status="Available">Yok</button>
+      <button class="chip" data-status="Unknown">Hata</button>
+      <button class="chip" data-status="WAF">WAF</button>
+      <button class="chip" data-status="Illegal">Geçersiz</button>
+    </nav>
+    <div class="filters">
+      <input id="resFilter" type="search" placeholder="Sonuçlarda ara">
+      <select id="userFilter" hidden><option value="">Tüm adlar</option></select>
+      <select id="sortBy">
+        <option value="order">Geliş sırası</option>
+        <option value="site">Site adı</option>
+        <option value="time">Yanıt süresi</option>
+        <option value="status">Durum</option>
+      </select>
+    </div>
+  </div>
+
+  <section id="results" class="results"></section>
+
+  <footer class="exports">
+    <span class="muted">Dışa aktar</span>
+    <button class="text" data-export="csv" disabled>CSV</button>
+    <button class="text" data-export="xlsx" disabled>XLSX</button>
+    <button class="text" data-export="txt" disabled>TXT</button>
+    <button class="text" data-export="json" disabled>JSON</button>
+    <label class="check small"><input type="checkbox" id="exportFound" checked> yalnızca bulunanlar</label>
+    <span class="sep"></span>
+    <button class="text" id="copyBtn" disabled>Linkleri kopyala</button>
+    <button class="text" id="openAllBtn" disabled>Hepsini aç</button>
+    <button class="text strong" id="sSaveCase" disabled>Bulunanları vakaya kaydet</button>
+  </footer>
+</div>
+</section>
+
+<!-- ============ VAKALAR ============ -->
+<section id="view-cases" class="view" hidden>
+<div class="wrap">
+  <div id="casesList">
+    <header class="tool-head">
+      <h1>Vakalar</h1>
+      <p>Bir kişi ya da konu için bulduklarını tek yerde topla, not al, bağlantı grafiğini gör ve rapor al. Veriler yalnızca bu bilgisayarda saklanır.</p>
+    </header>
+    <form id="newCaseForm" class="search">
+      <input id="newCaseName" type="text" placeholder="yeni vaka adı" autocomplete="off">
+      <button type="submit">Oluştur</button>
+    </form>
+    <div id="caseCards" class="case-cards"></div>
+  </div>
+
+  <div id="caseDetail" hidden>
+    <button type="button" class="text back" id="caseBack">← Tüm vakalar</button>
+    <header class="case-head">
+      <input id="caseName" class="case-name" type="text" spellcheck="false">
+      <div class="case-actions">
+        <button type="button" class="pill-btn" id="caseActivate">Aktif vaka yap</button>
+        <a class="pill-btn" id="caseReport" target="_blank" rel="noopener">Rapor / PDF</a>
+        <button type="button" class="pill-btn danger-btn" id="caseDelete">Sil</button>
+      </div>
+    </header>
+    <div class="case-meta muted" id="caseMeta"></div>
+    <div class="bar-row">
+      <nav class="tabs" id="caseTabs">
+        <button class="chip active" data-ctab="items">Bulgular</button>
+        <button class="chip" data-ctab="graph">Bağlantı grafiği</button>
+        <button class="chip" data-ctab="notes">Notlar</button>
+      </nav>
+      <div class="filters"><input id="caseFilter" type="search" placeholder="Bulgularda ara"></div>
+    </div>
+    <div id="caseItems"></div>
+    <div id="caseGraphWrap" hidden>
+      <div class="graph-legend" id="graphLegend"></div>
+      <div id="caseGraph" class="graph"></div>
+      <p class="note">Düğümler sürüklenebilir. Bir düğüme çift tıklayınca bağlantısı açılır. Aynı e-posta, telefon, alan adı, IP veya kullanıcı adı farklı bulgularda geçiyorsa tek düğümde birleşir.</p>
+    </div>
+    <div id="caseNotesWrap" hidden>
+      <textarea id="caseNotes" rows="16" placeholder="Bu vaka hakkında notlar… (otomatik kaydedilir)"></textarea>
+      <div class="note" id="notesSaved"></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ============ AYARLAR ============ -->
+<section id="view-settings" class="view" hidden>
+<div class="wrap">
+  <header class="tool-head">
+    <h1>Ayarlar</h1>
+    <p>API anahtarları ve oturum bilgileri. Yalnızca bu bilgisayarda, panel klasöründeki <code>settings.json</code> dosyasında saklanır.</p>
+  </header>
+  <form id="settingsForm" class="settings"></form>
+  <div class="settings-status" id="settingsStatus"></div>
+</div>
+</section>
+
+<!-- ============ GENEL ARAÇ GÖRÜNÜMÜ ============ -->
+<section id="view-tool" class="view" hidden>
+<div class="wrap">
+  <header class="tool-head">
+    <h1 id="tTitle"></h1>
+    <p id="tDesc"></p>
+    <p id="tNote" class="tool-note" hidden></p>
+    <details class="about" id="tAbout"><summary>Bu araç ne işe yarar?</summary><div class="about-body"></div></details>
+  </header>
+
+  <form id="toolForm" class="tool-form" autocomplete="off">
+    <div class="search">
+      <input id="tMain" type="text" spellcheck="false">
+      <button type="submit" id="tRun">Çalıştır</button>
+      <button type="button" id="tStop" disabled>Durdur</button>
+    </div>
+    <div id="tFields" class="tool-fields"></div>
+  </form>
+
+  <div class="meter" id="tMeter"><div id="tBar"></div></div>
+  <div class="summary">
+    <span><b id="tFound">0</b> bulundu</span>
+    <span><b id="tInfo">0</b> bilgi</span>
+    <span><b id="tErr">0</b> hata</span>
+    <span class="clock" id="tClock"><i class="spin" aria-hidden="true"></i><span id="tTime">0:00</span></span>
+  </div>
+  <div id="tStatus" class="status-line"></div>
+
+  <div class="bar-row">
+    <nav class="tabs" id="tTabs">
+      <button class="chip active" data-tab="found">Bulunanlar</button>
+      <button class="chip" data-tab="all">Tümü</button>
+      <button class="chip" data-tab="log">Günlük</button>
+    </nav>
+    <div class="filters">
+      <input id="tFilter" type="search" placeholder="Sonuçlarda ara">
+    </div>
+  </div>
+
+  <section id="tResults" class="results"></section>
+  <pre id="tLog" class="log" hidden></pre>
+
+  <footer class="exports">
+    <span class="muted">Dışa aktar</span>
+    <button class="text" data-texport="csv" disabled>CSV</button>
+    <button class="text" data-texport="xlsx" disabled>XLSX</button>
+    <button class="text" data-texport="txt" disabled>TXT</button>
+    <button class="text" data-texport="json" disabled>JSON</button>
+    <label class="check small"><input type="checkbox" id="tExportFound" checked> yalnızca bulunanlar</label>
+    <span class="sep"></span>
+    <button class="text" id="tCopy" disabled>Linkleri kopyala</button>
+    <button class="text strong" id="tSaveCase" disabled>Bulunanları vakaya kaydet</button>
+  </footer>
+</div>
+</section>
+
+</main>
+
+<aside id="drawer" class="drawer" aria-hidden="true">
+  <div class="drawer-head">
+    <span id="pvSite" class="pv-site"></span>
+    <button type="button" class="text" id="pvClose" aria-label="Kapat">Kapat</button>
+  </div>
+  <div id="pvBody" class="drawer-body"></div>
+</aside>
+<div id="scrim" class="scrim" hidden></div>
+<div id="chainMenu" class="chain-menu" hidden></div>
+<div id="toast" class="toast" hidden></div>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.9/standalone/umd/vis-network.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" defer></script>
+<script src="{{ url_for('static', filename='tools.js') }}"></script>
+<script src="{{ url_for('static', filename='features.js') }}"></script>
+<script src="{{ url_for('static', filename='unified.js') }}"></script>
+</body>
+</html>

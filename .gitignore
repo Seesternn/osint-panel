@@ -1,0 +1,27 @@
+# --- Gizli / kişisel veriler: ASLA depoya girmemeli ---
+panel/settings.json
+panel/settings.json.tmp
+panel/cases.db
+panel/cases.db-*
+tools/searxng/settings.yml
+.env
+*.sessionid
+
+# --- Kurulumda üretilen / indirilen şeyler (setup.sh yeniden oluşturur) ---
+.venv/
+sherlock/
+tools/*
+!tools/geoclip_worker.py
+!tools/ocr/
+tools/ocr/*
+!tools/ocr/ocr.swift
+!tools/searxng/
+tools/searxng/*
+!tools/searxng/settings.example.yml
+
+# --- Çalışma artıkları ---
+__pycache__/
+*.pyc
+*.log
+.DS_Store
+.claude/
