@@ -36,7 +36,14 @@ venv .venv
 uv pip install --quiet --python .venv/bin/python -r requirements.txt
 
 say "Sherlock"
-clone https://github.com/sherlock-project/sherlock.git sherlock
+# Panelin test edildiği sürüm (SHERLOCK_REF=main ile en yenisi kullanılabilir)
+SHERLOCK_REF="${SHERLOCK_REF:-c588d7c8b476df9f9c84912a05d1430fb8cdcdae}"
+if [ ! -d sherlock/.git ]; then
+  git init -q sherlock
+  git -C sherlock remote add origin https://github.com/sherlock-project/sherlock.git
+  git -C sherlock fetch -q --depth 1 origin "$SHERLOCK_REF"
+  git -C sherlock checkout -q FETCH_HEAD
+fi
 uv pip install --quiet --python .venv/bin/python ./sherlock
 
 mkdir -p tools

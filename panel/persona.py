@@ -219,7 +219,6 @@ def cluster(rows, name, ctx, ref_path=None, log=lambda m: None):
                 union(i, j, f"Aynı kullanıcı adı: {', '.join(sorted(common_u))} ({a.source} ↔ {b.source})", "güçlü")
             if a.emails & b.emails:
                 union(i, j, f"Aynı e-posta: {', '.join(sorted(a.emails & b.emails))}", "güçlü")
-            decl = {d for d in a.declared | b.declared}
             ids_a = {"user:" + u for u in a.usernames} | {"dom:" + d for d in a.domains}
             ids_b = {"user:" + u for u in b.usernames} | {"dom:" + d for d in b.domains}
             if (a.declared & ids_b) or (b.declared & ids_a):

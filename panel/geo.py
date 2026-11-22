@@ -18,7 +18,7 @@ import subprocess
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 from urllib.parse import quote
 
 import requests

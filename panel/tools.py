@@ -758,7 +758,6 @@ def emit_gravatar(g, emit, tag):
 
 
 def run_email_accounts(job, inp, emit):
-    import hashlib
     email = inp["email"].strip().lower()
     if "@" not in email:
         raise ToolError("Geçerli bir e-posta girin.")

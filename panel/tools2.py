@@ -13,7 +13,7 @@ import time
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from email import policy
-from urllib.parse import quote, urlparse
+from urllib.parse import quote
 
 import requests
 
@@ -1167,7 +1167,6 @@ def run_reconng(job, inp, emit):
         raise ToolError("Recon-ng sonuç üretmedi.")
     con = sqlite3.connect(dbp)
     con.row_factory = sqlite3.Row
-    n0 = len(job.get("results", [])) if isinstance(job.get("results"), list) else 0
     emitted = [0]
     _emit = emit
     def emit(**r):
