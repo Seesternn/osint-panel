@@ -1228,7 +1228,15 @@ def public_registry(lang="tr"):
             if f.get("options") == "wmn_categories":
                 f["options"] = [["", "Tümü"]] + [[c, c] for c in cats]
             fields.append(f)
-        out.append({k: v for k, v in t.items() if k != "run"} | {"fields": fields, "about": about.get(t["id"], {})})
+        entry = {k: v for k, v in t.items() if not callable(v) and k not in ("en",)} | {"fields": fields, "about": about.get(t["id"], {})}
+        en = t.get("en") if lang == "en" else None
+        if en:   # eklentilerin İngilizce katmanı / plugin English overlay
+            entry.update({k: en[k] for k in ("title", "desc", "note") if en.get(k)})
+            if en.get("about"):
+                entry["about"] = en["about"]
+            fl = en.get("fields") or {}
+            entry["fields"] = [{**f, **fl.get(f["name"], {})} for f in fields]
+        out.append(entry)
     return out
 
 

@@ -1,11 +1,11 @@
 /* Akıllı arama: tek giriş → türü algıla → o veriyi kabul eden tüm araçları birlikte çalıştır → birleşik rapor.
    Arka uçtaki mevcut araçlar (/api/tool/<id>, /api/search) olduğu gibi kullanılır. */
 
-const U_TYPES = { username: "Kullanıcı adı", email: "E-posta", phone: "Telefon", name: "Ad soyad", domain: "Alan adı",
+const U_TYPES = { username: "Kullanıcı adı", email: "E-posta", phone: "Telefon", name: "Ad soyad", domain: "Alan adı", crypto: "Kripto adresi",
                   ip: "IP adresi", url: "Bağlantı", image: "Görsel" };
 
 /* [araç, alanlar ($ = girilen değer), varsayılan: true | false | koşul] — ağır / yavaş araçlar varsayılan kapalı */
-const U_MAP = {
+let U_MAP = {   // sunucudaki /api/catalog ile değiştirilir (eklentiler dahil); bu yalnızca yedek
   username: [["sherlock", null, true], ["maigret", { username: "$", top: 500, timeout: 10 }, true], ["whatsmyname", { username: "$" }, true],
              ["user-scanner", { target: "$" }, true], ["blackbird", { target: "$" }, true], ["socialscan", { query: "$" }, true],
              ["github", { username: "$" }, true], ["social-activity", { username: "$" }, true], ["telegram", { username: "$" }, true],
@@ -27,7 +27,13 @@ const U_MAP = {
   url: [["wayback", { url: "$", mode: "page" }, true], ["site-intel", { url: "$" }, true], ["video", { url: "$", frames: "off" }, "video"],
         ["geofusion", { url: "$" }, "imageurl"], ["exiftool", { url: "$" }, "imageurl"], ["reverse-image", { url: "$" }, "imageurl"]],
   image: [["geofusion", {}, true], ["exiftool", {}, true], ["ela", {}, false]],
+  crypto: [],
 };
+/* Ortak katalog: web arayüzü, CLI ve eklentiler aynı eşlemeyi kullanır */
+fetch("/api/catalog").then(r => r.json()).then(c => {
+  U_MAP = Object.fromEntries(Object.entries(c.map).map(([typ, list]) => [typ, list.map(x => [x.id, x.fields, x.default])]));
+  if (typeof renderTypeBar === "function") renderTypeBar();
+}).catch(() => {});
 const IMG_RX = /\.(jpe?g|png|webp|gif|heic|tiff?|bmp)(\?|$)/i;
 const VIDEO_RX = /youtu\.?be|tiktok\.com|vimeo\.com|instagram\.com\/(reel|p)\/|(x|twitter)\.com\/.+\/status|dailymotion|twitch\.tv/i;
 const SEARCH_HOSTS = /(^|\.)(google|bing|duckduckgo|yandex|baidu|sogou)\.[a-z.]+$|web\.archive\.org|wa\.me|lens\.google|tineye\.com|suncalc|overpass|mapillary/i;
@@ -42,6 +48,7 @@ function detectType(v) {
   if (/^[\w.+-]+@[\w-]+(\.[\w-]+)+$/.test(v)) return "email";
   if (/^https?:\/\//i.test(v)) return "url";
   if (/^(\d{1,3}\.){3}\d{1,3}$/.test(v)) return "ip";
+  if (/^(bc1[ac-hj-np-z02-9]{25,87}|[13][a-km-zA-HJ-NP-Z1-9]{25,34})$/.test(v) || /^0x[0-9a-fA-F]{40}$/.test(v)) return "crypto";
   if (/^\+?[\d\s()-]{10,18}$/.test(v) && v.replace(/\D/g, "").length >= 10) return "phone";
   if (/^[\p{L}][\p{L}'’.-]*(\s+[\p{L}][\p{L}'’.-]*){1,3}$/u.test(v)) return "name";
   const host = v.replace(/^www\./i, "").toLowerCase();

@@ -83,7 +83,7 @@ function renderNav() {
         ${svg(t.icon)}<span>${esc(t.title)}</span>${keyBadge(t.id)}${T.running.has(t.id) ? '<i class="busy"></i>' : ""}</button>`).join("")}`).join("")
     || '<div class="nav-group">Eşleşen araç yok</div>';
 }
-const GROUP_ORDER = ["Çalışma alanı", "Kişi", "Kullanıcı adı", "E-posta", "Telefon", "Platform", "Görsel", "Alan adı", "Arama", "Çerçeveler"];
+const GROUP_ORDER = ["Çalışma alanı", "Kişi", "Kullanıcı adı", "E-posta", "Telefon", "Platform", "Görsel", "Alan adı", "Kripto", "Arama", "Çerçeveler", "Eklentiler"];
 const sortGroups = groups => Object.entries(groups).sort(([a], [b]) =>
   (GROUP_ORDER.indexOf(a) + 1 || 99) - (GROUP_ORDER.indexOf(b) + 1 || 99));
 

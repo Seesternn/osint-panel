@@ -9,8 +9,11 @@ import threading
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SETTINGS_PATH = os.path.join(HERE, "settings.json")
-DB_PATH = os.path.join(HERE, "cases.db")
+# Kalıcı veri klasörü (Docker'da bir birime bağlanır). Varsayılan: panel klasörü.
+DATA_DIR = os.environ.get("OSINT_DATA_DIR") or HERE
+os.makedirs(DATA_DIR, exist_ok=True)
+SETTINGS_PATH = os.path.join(DATA_DIR, "settings.json")
+DB_PATH = os.path.join(DATA_DIR, "cases.db")
 _lock = threading.Lock()
 
 # ------------------------------------------------------------------ ayarlar

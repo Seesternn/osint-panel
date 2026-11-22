@@ -644,3 +644,6 @@ I18N_EN.patterns.push(
   ["Commit'teki ad: (.+)", "Name in commits: $1"],
   ["(.+) — aynı isimdeki başka biri de olabilir", "$1 — may be someone else with the same name"],
 );
+
+/* ---------- eklentiler ve yeni türler ---------- */
+Object.assign(I18N_EN.phrases, { "Kripto adresi": "Crypto address", "Kripto": "Crypto", "Eklentiler": "Plugins" });

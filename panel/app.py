@@ -33,6 +33,16 @@ tools.REGISTRY.extend(tools2.REGISTRY2)
 tools.BY_ID.update({t['id']: t for t in tools2.REGISTRY2})
 tools.ABOUT.update(tools2.ABOUT2)
 
+import catalog
+import plugins
+plugins.load_all(tools.REGISTRY, tools.BY_ID, tools.ABOUT)
+for _p in plugins.LOADED:
+    for _s in _p.get("settings") or []:          # eklentinin Ayarlar sayfası alanları
+        if not any(x[0] == _s[0] for x in store.SETTINGS):
+            store.SETTINGS.append(tuple(_s))
+    if _p.get("key"):
+        store.TOOL_KEYS[_p["id"]] = tuple(_p["key"])
+
 app = Flask(__name__)
 LOCAL_JSON = os.path.join(os.path.dirname(sherlock_project.__file__), "resources", "data.json")
 
@@ -307,7 +317,7 @@ def api_item_delete(iid):
     return jsonify(ok=True)
 
 
-CASE_FILES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "case_files")
+CASE_FILES = os.path.join(store.DATA_DIR, "case_files")
 
 
 def _persist_jobfile(job, url):
@@ -400,6 +410,15 @@ def run_tool_job(job, tool, inp):
         job["done"] = True
         q.put({"type": "done", "data": {"cancelled": job["cancel"].is_set(),
                                          "elapsed": round(time.time() - job["started"], 1)}})
+
+
+@app.get("/api/catalog")
+def api_catalog():
+    """Akıllı arama eşlemesi: hangi tür hangi araçlara gider (çekirdek + eklentiler)."""
+    return jsonify(types=catalog.TYPES, map=catalog.build(tools.REGISTRY),
+                   plugins=[{"id": p["id"], "file": p["plugin"]} for p in plugins.LOADED],
+                   plugin_errors=[{"file": f, "error": e} for f, e in plugins.LOAD_ERRORS],
+                   plugin_dir=plugins.user_dir())
 
 
 @app.get("/api/jobfile/<job_id>/<name>")

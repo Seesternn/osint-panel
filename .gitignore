@@ -35,3 +35,9 @@ PLAN*.md
 plans/
 notes/
 .private/
+
+# Vaka dosyaları, kanıt arşivi, kullanıcı eklentileri (kişisel veri)
+panel/case_files/
+panel/evidence/
+panel/plugins_user/
+data/
