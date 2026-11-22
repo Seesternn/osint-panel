@@ -25,3 +25,13 @@ __pycache__/
 *.log
 .DS_Store
 .claude/
+
+# --- Özel çalışma notları ve planlar: depoya girmez ---
+CLAUDE.md
+CLAUDE.local.md
+AGENTS.md
+*.plan.md
+PLAN*.md
+plans/
+notes/
+.private/
