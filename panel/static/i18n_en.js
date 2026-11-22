@@ -26,6 +26,7 @@ const I18N_EN = {
     ["Bağlantıdaki “(.+)” kullanıcı adını başka sitelerde de ara", "Also search the username “$1” from the link on other sites"],
     ["(.+) için (\\d+) sonuç", "$2 results for $1"],
     ["Araç bulunamadı: (.+)", "Tool not found: $1"],
+    ["Gereksinim: (.+)", r => `Requirement: ${r}`],
     ["(.+?)'(?:ı|i|u|ü|yı|yi|yu|yü|nı|ni|nu|nü) aç ↗", "Open $1 ↗"],
     ["(.+?)'(?:a|e|ya|ye|na|ne) gönder \\((\\d+)\\)", "Send to $1 ($2)"],
     ["(.+?)'(?:a|e|ya|ye|na|ne) gönder", "Send to $1"],
@@ -92,7 +93,7 @@ const I18N_EN = {
     "Bulguları toplamak": "Collecting findings",
     "Her sonuçtaki → düğmesiyle bulunan e-posta, telefon, alan adı ya da kullanıcı adını başka bir araca gönder; + ile Vakaya ekle. Vakalar sayfasında bağlantı grafiği ve PDF rapor var.":
       "Send a found e-mail, phone, domain or username to another tool with the → button on each result; add to a case with +. The Cases page has a link graph and a PDF report.",
-    "Tüm araçlar": "All tools", "Ne zaman kullanılır": "When to use", "Girdi": "Input", "Çıktı": "Output", "İpucu": "Tip",
+    "Tüm araçlar": "All tools", "Ne yapar": "What it does", "Ne zaman kullanılır": "When to use", "Girdi": "Input", "Çıktı": "Output", "İpucu": "Tip",
     "Gereksinim": "Requirement", "Bu araç ne işe yarar?": "What does this tool do?",
 
     /* ---------- Sherlock ---------- */
@@ -230,6 +231,7 @@ const I18N_EN = {
     "API anahtarları (isteğe bağlı)": "API keys (optional)",
     "Gmail adresine ait herkese açık Google bilgilerini (profil fotoğrafı, Gaia ID, Maps) gösterir.": "Shows public Google data for a Gmail address (profile photo, Gaia ID, Maps).",
     "Bir kez terminalde `tools/ghunt/bin/ghunt login` ile kendi Google hesabınızla oturum açmanız gerekir.": "You need to log in once with your own Google account in a terminal: `tools/ghunt/bin/ghunt login`.",
+    "Bir kez terminalde tools/ghunt/bin/ghunt login ile kendi Google hesabınızla oturum açmanız gerekir.": "You need to log in once with your own Google account in a terminal: tools/ghunt/bin/ghunt login",
     "Gmail adresi": "Gmail address", "ornek@gmail.com": "example@gmail.com",
     "Numaranın ülkesini ve biçimlerini çıkarır, numarayla ilgili hazır web aramaları üretir.": "Extracts the country and formats of a number and builds ready-made web searches for it.",
     "Telefon numarası": "Phone number",

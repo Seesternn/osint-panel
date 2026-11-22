@@ -57,7 +57,7 @@ const T = { registry: [], current: null, job: null, es: null, results: [], logs:
 
 /* ---------------- sol panel ---------------- */
 async function loadNav() {
-  try { T.registry = await (await fetch("/api/tools")).json(); } catch { T.registry = []; }
+  try { T.registry = await (await fetch("/api/tools?lang=" + (typeof LANG === "string" ? LANG : "tr"))).json(); } catch { T.registry = []; }
   if (!T.registry.some(t => t.id === "sherlock"))
     T.registry.unshift({ id: "sherlock", group: "Kullanıcı adı", title: "Sherlock", icon: "fingerprint", fields: [], about: {} });
   T.registry.unshift({ id: "unified", group: "Çalışma alanı", title: "Akıllı arama", icon: "search", desc: "Tek giriş, tüm uygun araçlar, birleşik rapor", fields: [] },

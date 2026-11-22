@@ -212,7 +212,7 @@ def api_stop(job_id):
 # ---------------------------------------------------------------- diğer araçlar
 @app.get("/api/tools")
 def api_tools():
-    return jsonify(tools.public_registry())
+    return jsonify(tools.public_registry(request.args.get("lang", "tr")))
 
 
 # ---------------------------------------------------------------- ayarlar (27)

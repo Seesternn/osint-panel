@@ -1213,10 +1213,14 @@ ABOUT = {
 }
 
 
-def public_registry():
+def public_registry(lang="tr"):
+    about = ABOUT
+    if lang == "en":
+        from about_en import ABOUT_EN
+        about = {**ABOUT, **ABOUT_EN}
     cats = sorted({s.get("cat", "") for s in load_wmn()["sites"] if s.get("cat")})
     out = [{"id": "sherlock", "group": "Kullanıcı adı", "title": "Sherlock", "icon": "fingerprint",
-            "desc": "400+ sosyal ağda kullanıcı adı arar.", "fields": [], "about": ABOUT["sherlock"]}]
+            "desc": "400+ sosyal ağda kullanıcı adı arar.", "fields": [], "about": about["sherlock"]}]
     for t in REGISTRY:
         fields = []
         for f in t["fields"]:
@@ -1224,7 +1228,7 @@ def public_registry():
             if f.get("options") == "wmn_categories":
                 f["options"] = [["", "Tümü"]] + [[c, c] for c in cats]
             fields.append(f)
-        out.append({k: v for k, v in t.items() if k != "run"} | {"fields": fields, "about": ABOUT.get(t["id"], {})})
+        out.append({k: v for k, v in t.items() if k != "run"} | {"fields": fields, "about": about.get(t["id"], {})})
     return out
 
 
