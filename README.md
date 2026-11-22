@@ -26,7 +26,10 @@ are never committed.
 - **Domain / IP** – WHOIS/DNS, crt.sh, subfinder, dnstwist, Wayback Machine, analytics-ID pivoting,
   Shodan, theHarvester, document metadata, SpiderFoot, Recon-ng.
 - **Workspace** – cases with notes, link graph, HTML/PDF report, CSV/JSON/XLSX export, tool chaining (→),
-  persistent API keys, Turkish / English interface.
+  persistent API keys.
+- **Turkish / English** – switch with the TR / EN buttons at the bottom of the sidebar. Tool help, results,
+  case reports and AI summaries follow the chosen language; name research also queries its sources
+  (Wikidata, Wikipedia, news, web search) in that language first.
 
 ## Install
 
@@ -43,6 +46,21 @@ git clone <this-repo> osint-panel && cd osint-panel
 
 `launch_panel.sh` starts the server in the background and opens the browser.
 API keys (all optional) are added in **Settings**; each field has a "Get key" button.
+
+## Project layout
+
+| Path | What it is |
+|---|---|
+| `panel/app.py` | Flask server, job runner, cases, reports |
+| `panel/tools.py`, `panel/tools2.py` | Tool registry and wrappers |
+| `panel/namesearch.py`, `persona.py`, `deepscan.py` | Name research, person clustering, deep scan |
+| `panel/geo.py` | Photo geolocation (EXIF, GeoCLIP, OCR, Gemini) |
+| `panel/static/` | Front end (`unified.js` = Smart search, `i18n*.js` = translations) |
+| `panel/about_en.py` | English help texts |
+| `setup.sh` | Installs everything into `.venv/` and `tools/` (both git-ignored) |
+
+To translate a new UI string, add it to `panel/static/i18n_en.js`; the panel is written in Turkish and
+translated at runtime.
 
 ## Responsible use
 

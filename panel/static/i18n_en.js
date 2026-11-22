@@ -641,5 +641,6 @@ I18N_EN.patterns.push(
 Object.assign(I18N_EN.phrases, { "sonuç yok": "no results", "Vakaya ekle": "Add to case", "+ Vakaya ekle": "+ Add to case", "puan": "score" });
 I18N_EN.patterns.push(
   ["(\\d+) bağlantı / aday", "$1 links / candidates"],
+  ["Commit'teki ad: (.+)", "Name in commits: $1"],
   ["(.+) — aynı isimdeki başka biri de olabilir", "$1 — may be someone else with the same name"],
 );
