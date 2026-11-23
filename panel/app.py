@@ -863,7 +863,21 @@ def healthz():
     return jsonify(ok=True, tools=len(tools.REGISTRY) + 1, plugins=len(plugins.LOADED))
 
 
+def _raise_open_file_limit(want=65536):
+    """Sherlock / Maigret yüzlerce bağlantıyı aynı anda açar. macOS launchd ve bazı sistemler varsayılan olarak yalnızca
+    256 dosyaya izin verir ("Too many open files"); süreç kendi yumuşak sınırını yükseltir."""
+    try:
+        import resource
+        soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+        target = want if hard == resource.RLIM_INFINITY else min(want, hard)
+        if soft < target:
+            resource.setrlimit(resource.RLIMIT_NOFILE, (target, hard))
+    except Exception:
+        pass
+
+
 def main():
+    _raise_open_file_limit()
     host = os.environ.get("PANEL_HOST", "127.0.0.1")
     port = int(os.environ.get("PORT", 5050))
     if host not in ("127.0.0.1", "localhost", "::1") and not PANEL_TOKEN:

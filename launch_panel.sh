@@ -62,6 +62,8 @@ if ! is_panel; then
   <key>RunAtLoad</key><false/>
   <key>KeepAlive</key><false/>
   <key>ProcessType</key><string>Interactive</string>
+  <key>SoftResourceLimits</key><dict><key>NumberOfFiles</key><integer>65536</integer></dict>
+  <key>HardResourceLimits</key><dict><key>NumberOfFiles</key><integer>65536</integer></dict>
 </dict></plist>
 PL
     if ! cmp -s "$PLIST.new" "$PLIST" || ! launchctl print "$DOMAIN/$LABEL" >/dev/null 2>&1; then
